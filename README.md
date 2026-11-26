@@ -3,10 +3,11 @@
 Sistema de gestión del tambo: ordeñe, leche, queso paraguayo, inventario, ventas, compras y gastos,
 con el dueño como órgano de control y aprobación.
 
-**Estado: Fase 4 — ventas, clientes y cuentas por cobrar.** Fase 1 (base, login, roles, auditoría),
+**Estado: Fase 6 — tablero del dueño, reportes, bandeja de control y alertas.** Fase 1 (base, login, roles, auditoría),
 Fase 2 (registro diario de leche, destinos, correcciones con aprobación, panel y alertas), Fase 3
 (rodeo y ordeñe por vaca, insumos e inventario, elaboración de queso con aprobación y trazabilidad) y
-Fase 4 (clientes, tabla de precios, ventas que descuentan inventario, cuentas por cobrar y cobros) terminadas.
+Fase 4 (clientes, tabla de precios, ventas que descuentan inventario, cuentas por cobrar y cobros), Fase 5
+(proveedores, gastos con aprobación, compras y cuentas por pagar) terminadas.
 Plan y decisiones en [DESIGN.md](DESIGN.md).
 
 ## Probarlo sin instalar nada (GitHub Codespaces)
@@ -36,7 +37,7 @@ Abrí <http://localhost:3000> e ingresá con cualquiera de los usuarios de prueb
 
 | Usuario    | Clave                | Rol           | Ve en el menú                                              |
 | ---------- | -------------------- | ------------- | ---------------------------------------------------------- |
-| `admin`    | `Tambo.Admin2026`    | Administrador | Los 12 módulos, incluidos Aprobaciones, Auditoría y Usuarios |
+| `admin`    | `Tambo.Admin2026`    | Administrador | Los 12 módulos, incluidos Bandeja de control, Reportes, Auditoría y Usuarios |
 | `operador` | `Tambo.Operador2026` | Operador      | Rodeo, Leche, Queso, Inventario, Compras, Gastos, Reportes  |
 | `ventas`   | `Tambo.Ventas2026`   | Ventas        | Inventario, Ventas y cobros, Gastos, Reportes               |
 
@@ -148,6 +149,24 @@ ellos esperando aprobación). El monto que pide aprobación se cambia con `GASTO
    desde la compra y se pueden anular con motivo.
 8. **Anular compra**: solo el `admin`, con motivo y sin pagos vigentes. El stock vuelve a bajar.
 
+## Cómo probar la Fase 6 (tablero, reportes, bandeja de control y alertas)
+
+1. **Tablero** (como `admin`, **Inicio**): producción de hoy y del mes, leche de los últimos 30 días,
+   rendimiento del mes, alertas, y la plata del mes: ingresos (leche y queso), gastos por categoría y por
+   centro de costo, compras de insumos, resultado, margen bruto por producto y cuentas por cobrar y por pagar.
+   Arriba avisa cuántas cosas esperan tu control.
+2. **Como `operador`** el tablero muestra solo producción y alertas operativas: nada de plata ni cuentas.
+3. **Reportes** (solo `admin`): *Resultados* (ingresos − gastos aprobados − compras de insumos del período),
+   *Flujo de caja* diario o mensual, *Por lote de queso* (costo de leche, insumos y elaboración contra lo
+   vendido de ese lote), *Por producto* y el *Historial de aprobaciones*. Cada uno se baja en **PDF** y **Excel**.
+4. **Bandeja de control** (`admin`): gastos y lotes de queso por aprobar, correcciones de leche y los
+   registros editados después de cerrados, todo en una pantalla. Tocá cada uno para decidir ahí mismo; los
+   editados se marcan como revisados con una nota.
+5. **Alertas** (**Reportes → Alertas**): producción diaria baja (litros mínimos), rendimiento de queso fuera de
+   rango, insumos bajo el mínimo y cuentas vencidas (con días de gracia). Solo el `admin` las cambia.
+6. **Auditoría** (`admin`): todo lo que pasó en el sistema con filtros por fecha, tema y acción, y el botón
+   **Verificar integridad**, que comprueba que nadie tocó la auditoría directamente en la base.
+
 ## Usuarios y roles
 
 Como `admin`, **Usuarios y roles**:
@@ -167,13 +186,16 @@ Como `admin`, **Usuarios y roles**:
 docker compose exec backend python -m pytest
 ```
 
-156 pruebas: login, sesión y refresh, usuarios, permisos y menú por rol, auditoría (mixin, logins,
+202 pruebas: login, sesión y refresh, usuarios, permisos y menú por rol, auditoría (mixin, logins,
 inmutabilidad), las reglas de la leche (saldo, destinos, correcciones con aprobación, tablero y
 alertas), el ordeñe por vaca (suma al lote, reenvío, correcciones, tendencia) y el queso (descuento de
 leche e insumos, reservas, consumo real, rendimiento, aprobación solo del Administrador, rechazo y
 corrección, cancelación, inventario inmutable y trazabilidad completa por API) y las ventas (precios por
 tipo y volumen, no vender más que el stock, descuento de inventario y cuenta por cobrar, cobros, anulación
-con devolución del stock, historial del cliente, lote → clientes y permisos de cada rol).
+con devolución del stock, historial del cliente, lote → clientes y permisos de cada rol), gastos y compras
+(aprobación automática o manual, stock y cuentas por pagar) y los reportes de la Fase 6 (estado de
+resultados que cuadra con ventas − gastos − compras, costos por lote, flujo de caja, cuentas, alertas,
+historial de aprobaciones, registros editados, exportes PDF/Excel y que el Operador no vea nada financiero).
 
 ## Desarrollo sin Docker
 
@@ -301,6 +323,23 @@ Todas bajo `/api/v1`.
 | GET    | `/gastos/{id}/comprobante` | Quien lo ve | Foto o PDF |
 | POST   | `/gastos/{id}/aprobar` · `/rechazar` · `/anular` | Admin | `comentario` (obligatorio al rechazar) o `motivo` |
 | GET    | `/aprobaciones/pendientes` | Admin | Cuántos gastos, lotes de queso y correcciones de leche esperan |
+
+## API de la Fase 6
+
+Los períodos van como `desde` y `hasta` (AAAA-MM-DD); si faltan, es el mes en curso.
+
+| Método | Ruta | Quién | Para qué |
+| ------ | ---- | ----- | -------- |
+| GET | `/tablero` | Quien vea reportes operativos o financieros | Producción y alertas; `financiero` solo para el Admin; `pendientes` para quien aprueba |
+| GET | `/reportes/estado-resultados` | Admin | Ingresos por producto, gastos por categoría y centro, compras de insumos y resultado |
+| GET | `/reportes/flujo-caja?agrupar=dia\|mes` | Admin | Cobros, pagos a proveedores, gastos, neto y acumulado |
+| GET | `/reportes/rentabilidad-lotes` · `/reportes/rentabilidad-productos` | Admin | Costo y resultado por lote de queso; margen por producto |
+| GET | `/reportes/aprobaciones` | Admin | Quién aprobó o rechazó qué y cuándo (`entidad`, `usuario`) |
+| GET | `/reportes/{reporte}.pdf` · `.xlsx` | Igual que el reporte | `estado-resultados`, `flujo-caja`, `flujo-caja-mensual`, `rentabilidad-lotes`, `rentabilidad-productos`, `aprobaciones` |
+| GET | `/control/registros-editados?sin_revisar=1` | Admin | Ediciones de registros cerrados, reaperturas y anulaciones |
+| POST | `/control/registros-editados/{id}/revisar` | Admin | Marcar como revisado (`nota`) |
+| GET | `/alertas` | Operador y Admin | Alertas vigentes (el Operador no ve las de cuentas) |
+| GET/PUT | `/alertas/configuracion` | Ver: Operador y Admin · Cambiar: Admin | Umbrales de cada alerta y si está activa |
 
 ## Cómo se usa lo construido en las próximas fases
 

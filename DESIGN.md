@@ -22,8 +22,9 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 3. Rodeo y ordeñe por vaca; inventario e insumos; lotes de queso con aprobación y trazabilidad. ← **hecho**
    (Las compras formales pasan a la Fase 5.)
 4. Clientes, ventas, entregas, cuentas por cobrar y cobros; pantalla de usuarios y roles. ← **hecho**
-5. Gastos, bandeja de aprobaciones, cierre de mes.
-6. Reportes, tablero del dueño, pantalla de auditoría e importación de planillas.
+5. Gastos, bandeja de aprobaciones, cierre de mes. ← **hecho**
+6. Reportes, tablero del dueño, bandeja de control, alertas y pantalla de auditoría. ← **hecho**
+   (La importación de planillas no entró en el pedido de la Fase 6: queda para cuando el dueño la pida.)
 7. Integración SIFEN (opcional).
 
 ## Decisiones técnicas de la Fase 1
@@ -100,3 +101,18 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 | Anular compras | Solo el Administrador, con motivo, sin pagos vigentes y solo si el stock que entró sigue disponible. Se descuenta con un movimiento de anulación; nada se borra | Los movimientos de inventario no se editan ni borran |
 | Bandeja de aprobación | Muestra los gastos pendientes para decidir ahí mismo, con la foto, y avisa de lotes de queso y correcciones de leche que esperan al Administrador | Un solo lugar para todo lo pendiente |
 
+
+## Decisiones de la Fase 6 (tablero, reportes y control)
+
+| Tema | Decisión | Por qué |
+| ---- | -------- | ------- |
+| Estado de resultados | Resultado = ventas no anuladas − gastos **aprobados** − compras de insumos **confirmadas**, todo por fecha dentro del período. Los gastos pendientes se muestran aparte y no restan | Criterio de aceptación: "ventas − gastos del período". El dueño eligió que los insumos cuenten **cuando se compran** (26/11/2026) |
+| Costo del litro | Gastos aprobados del centro *Producción de leche* del mes ÷ litros ordeñados del mes | Lo que cuesta producir cada litro, sin inventar prorrateos |
+| Costo de un lote de queso | Litros usados × costo del litro + insumos consumidos al precio promedio ponderado de compra (hasta la fecha del lote) + su parte de los gastos del centro *Elaboración de queso* del mes, repartida por litros procesados | Rentabilidad por lote pedida en la Fase 6. Si un insumo nunca se compró, no suma costo y el reporte lo avisa |
+| Ingresos de un lote | Cada venta se reparte entre los lotes que salió, en proporción a los kg | Una venta puede salir de varios lotes |
+| Margen por producto | Ingresos − costo de lo vendido (no de lo producido). Los gastos de Administración se muestran aparte | Que el margen no castigue el queso que todavía está en stock |
+| Flujo de caja | Plata que entra (cobros vigentes) y sale (pagos a proveedores y gastos aprobados) por día o por mes, con acumulado | Las ventas a crédito entran cuando se cobran, no cuando se venden |
+| Quién ve qué | El Operador ve producción y alertas operativas. Plata, reportes financieros, bandeja y auditoría son solo del Administrador (403 por API) | Criterio de aceptación de la Fase 6 |
+| Registros editados | La bandeja lista ediciones de registros cerrados o aprobados, correcciones aplicadas, reaperturas y anulaciones de cobros, pagos o registros aprobados. "Revisado" se guarda aparte (`revisiones_registro`) porque la auditoría no se modifica | Control del dueño sin tocar la tabla inmutable |
+| Alertas | Umbrales en la configuración del establecimiento (no en el `.env`), editables por el Administrador y auditados. Producción baja mira los últimos 7 días (hoy solo cuando ya hay ordeñe cargado) | Que el dueño las ajuste sin tocar el servidor |
+| Exportes | PDF (reportlab) y Excel (openpyxl) generados en el servidor con el mismo cálculo que la pantalla. Nombre: `reporte_desde_hasta` | Que el archivo coincida con lo que se ve |

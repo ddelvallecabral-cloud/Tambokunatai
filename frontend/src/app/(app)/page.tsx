@@ -1,10 +1,19 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
+import { Tablero } from "@/components/Tablero";
 
 export default function InicioPage() {
-  const { usuario } = useAuth();
+  const { usuario, puede } = useAuth();
   if (!usuario) return null;
+  if (puede("reportes.operativos") || puede("reportes.financieros")) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <h1 className="mb-5 text-2xl font-semibold">Hola, {usuario.nombre.split(" ")[0]}</h1>
+        <Tablero />
+      </div>
+    );
+  }
   const proximos = usuario.modulos.filter((m) => !m.disponible);
 
   return (

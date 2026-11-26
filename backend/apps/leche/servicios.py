@@ -300,8 +300,10 @@ def formato_litros(valor: Decimal) -> str:
 
 
 def umbral_litros_diarios() -> Decimal | None:
-    valor = getattr(settings, "LECHE_UMBRAL_LITROS_DIARIOS", None)
-    return Decimal(str(valor)) if valor else None
+    """Lo configura el Administrador en Alertas; por defecto sale del .env."""
+    from apps.reportes import alertas
+
+    return alertas.litros_minimos()
 
 
 def tablero(fecha: datetime.date | None = None) -> dict:
