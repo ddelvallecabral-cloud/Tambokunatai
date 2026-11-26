@@ -51,7 +51,8 @@ PERMISOS = [
     # Compras
     ("compras.ver", "compras", "Ver compras y proveedores"),
     ("compras.compra.registrar", "compras", "Cargar compras y proveedores"),
-    ("compras.compra.aprobar", "compras", "Aprobar compras"),
+    ("compras.compra.aprobar", "compras", "Anular compras"),
+    ("compras.pago.registrar", "compras", "Ver cuentas por pagar y registrar pagos a proveedores"),
     # Gastos
     ("gastos.ver", "gastos", "Ver gastos propios"),
     ("gastos.ver_todos", "gastos", "Ver gastos de todos"),
@@ -107,10 +108,10 @@ MODULOS = [
     {"codigo": "leche", "nombre": "Leche", "ruta": "/leche", "permiso": "leche.ver", "disponible": True, "fase": 2},
     {"codigo": "queso", "nombre": "Queso", "ruta": "/queso", "permiso": "queso.ver", "disponible": True, "fase": 3},
     {"codigo": "inventario", "nombre": "Inventario", "ruta": "/inventario", "permiso": "inventario.ver", "disponible": True, "fase": 3},
-    {"codigo": "compras", "nombre": "Compras", "ruta": "/compras", "permiso": "compras.ver", "disponible": False, "fase": 5},
+    {"codigo": "compras", "nombre": "Compras", "ruta": "/compras", "permiso": "compras.ver", "disponible": True, "fase": 5},
     {"codigo": "ventas", "nombre": "Ventas y cobros", "ruta": "/ventas", "permiso": "ventas.ver", "disponible": True, "fase": 4},
-    {"codigo": "gastos", "nombre": "Gastos", "ruta": "/gastos", "permiso": "gastos.ver", "disponible": False, "fase": 5},
-    {"codigo": "aprobaciones", "nombre": "Aprobaciones", "ruta": "/aprobaciones", "permiso": "gastos.gasto.aprobar", "disponible": False, "fase": 5},
+    {"codigo": "gastos", "nombre": "Gastos", "ruta": "/gastos", "permiso": "gastos.ver", "disponible": True, "fase": 5},
+    {"codigo": "aprobaciones", "nombre": "Aprobaciones", "ruta": "/aprobaciones", "permiso": "gastos.gasto.aprobar", "disponible": True, "fase": 5},
     {"codigo": "reportes", "nombre": "Reportes", "ruta": "/reportes", "permiso": "reportes.ver", "disponible": False, "fase": 6},
     {"codigo": "auditoria", "nombre": "Auditoría", "ruta": "/auditoria", "permiso": "auditoria.ver", "disponible": False, "fase": 6},
     {"codigo": "usuarios", "nombre": "Usuarios y roles", "ruta": "/usuarios", "permiso": "usuarios.ver", "disponible": True, "fase": 4},

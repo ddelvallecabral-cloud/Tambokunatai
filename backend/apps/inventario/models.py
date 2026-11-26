@@ -78,6 +78,7 @@ class Motivo(models.TextChoices):
     VENTA = "venta", "Venta"
     DEVOLUCION = "devolucion", "Devolución por venta anulada"
     MERMA = "merma", "Merma"
+    ANULACION_COMPRA = "anul_compra", "Anulación de una compra"
 
 
 class MovimientoInventario(models.Model):
@@ -95,6 +96,8 @@ class MovimientoInventario(models.Model):
                                    related_name="movimientos_inventario")
     venta = models.ForeignKey("ventas.Venta", null=True, blank=True, on_delete=models.PROTECT,
                               related_name="movimientos_inventario")
+    compra = models.ForeignKey("compras.Compra", null=True, blank=True, on_delete=models.PROTECT,
+                               related_name="movimientos_inventario")
     lote_proveedor = models.CharField("lote del proveedor", max_length=60, blank=True)
     nota = models.CharField(max_length=255, blank=True)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT, related_name="+")
@@ -119,6 +122,9 @@ class MovimientoInventario(models.Model):
             models.CheckConstraint(
                 condition=~Q(motivo__in=["venta", "devolucion"]) | Q(venta__isnull=False),
                 name="movimiento_venta_con_venta"),
+            models.CheckConstraint(
+                condition=~Q(motivo="anul_compra") | Q(compra__isnull=False),
+                name="movimiento_anulacion_con_compra"),
             models.CheckConstraint(
                 condition=Q(item="insumo") | Q(tipo__in=["entrada", "salida"]),
                 name="movimiento_reserva_solo_insumos"),
