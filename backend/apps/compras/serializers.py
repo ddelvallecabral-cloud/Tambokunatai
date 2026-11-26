@@ -63,16 +63,22 @@ class CompraSerializer(serializers.ModelSerializer):
     items = CompraItemSerializer(many=True, read_only=True)
     cuenta = CuentaPagarSerializer(read_only=True)
     tiene_comprobante = serializers.SerializerMethodField()
+    tipo_comprobante = serializers.SerializerMethodField()
     creado_por_nombre = serializers.CharField(source="creado_por.nombre", default=None, read_only=True)
 
     class Meta:
         model = Compra
         fields = ["id", "codigo", "numero", "fecha", "proveedor", "proveedor_nombre", "factura", "condicion", "total",
                   "observaciones", "estado_compra", "motivo_estado", "items", "cuenta", "tiene_comprobante",
-                  "creado_por_nombre", "fecha_creacion"]
+                  "tipo_comprobante", "creado_por_nombre", "fecha_creacion"]
 
     def get_tiene_comprobante(self, obj):
         return bool(obj.comprobante)
+
+    def get_tipo_comprobante(self, obj):
+        if not obj.comprobante:
+            return None
+        return "pdf" if obj.comprobante.name.lower().endswith(".pdf") else "imagen"
 
 
 class ItemEntradaSerializer(serializers.Serializer):

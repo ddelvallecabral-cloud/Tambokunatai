@@ -81,6 +81,7 @@ class Command(BaseCommand):
             insumos = self._insumos_demo(admin)
             self._queso_demo(operador, admin, lotes, insumos)
             self._ventas_demo(admin)
+            self._egresos_demo(operador, admin, insumos)
         finally:
             terminar_contexto(token)
 
@@ -158,6 +159,48 @@ class Command(BaseCommand):
                                        medio="efectivo" if cobro == "todo" else "transferencia")
             hechas += 1
         self.stdout.write(f"  clientes de demo: {len(clientes)}, ventas de demo: {hechas}")
+
+    def _egresos_demo(self, operador, admin, insumos):
+        """Proveedores, dos compras (una a crédito) y gastos: chicos aprobados solos y dos que esperan al Administrador."""
+        import datetime
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from apps.compras import servicios as compras
+        from apps.compras.models import Proveedor
+        from apps.core.contexto import fijar_usuario
+        from apps.gastos import servicios as gastos
+
+        fijar_usuario(admin)
+        provs = {p[0]: Proveedor.objects.create(nombre=p[0], tipo=p[1], contacto=p[2], telefono=p[3], ruc=p[4]) for p in (
+            ("Agroveterinaria El Rodeo", "sanidad", "Dr. Benítez", "0981 220 330", "80012345-6"),
+            ("Lácteos Insumos S.A.", "insumos", "Marta Giménez", "021 555 410", "80098765-1"),
+            ("Estación Ñemby", "combustible", "", "0972 101 202", ""),
+            ("Electricista Ramón Ayala", "servicios", "Ramón Ayala", "0985 404 505", ""),
+        )}
+        hoy = timezone.localdate()
+        compras.registrar_compra(admin, proveedor=provs["Lácteos Insumos S.A."], fecha=hoy - datetime.timedelta(days=6),
+                                 factura="001-001-0004521", condicion="credito_30", items=[
+                                     {"insumo": insumos["CUAJO"], "cantidad": Decimal("1000"), "precio_unitario": 85, "lote_proveedor": "CJ-2702"},
+                                     {"insumo": insumos["BOLSA"], "cantidad": Decimal("500"), "precio_unitario": 650},
+                                 ])
+        compras.registrar_compra(admin, proveedor=provs["Lácteos Insumos S.A."], fecha=hoy - datetime.timedelta(days=2),
+                                 factura="001-001-0004602", condicion="contado", pagada=True, items=[
+                                     {"insumo": insumos["SAL"], "cantidad": Decimal("25"), "precio_unitario": 4500},
+                                 ])
+        for usuario, dias, cat, centro, monto, desc, prov in (
+            (operador, 5, "combustible", "produccion_leche", 180_000, "Gasoil para el generador del tambo", "Estación Ñemby"),
+            (operador, 4, "sanidad", "produccion_leche", 95_000, "Antiparasitario para 6 terneros", "Agroveterinaria El Rodeo"),
+            (operador, 2, "mantenimiento", "elaboracion_queso", 1_250_000, "Cambio del motor de la tina de cuajado", "Electricista Ramón Ayala"),
+            (operador, 1, "alimentacion", "produccion_leche", 2_400_000, "Balanceado lechero, 40 bolsas", None),
+            (admin, 3, "honorarios", "administracion", 900_000, "Honorarios del contador, noviembre", None),
+        ):
+            fijar_usuario(usuario)
+            gastos.registrar_gasto(usuario, fecha=hoy - datetime.timedelta(days=dias), categoria=cat, centro_costo=centro,
+                                   monto=monto, descripcion=desc, proveedor=provs.get(prov) if prov else None)
+        fijar_usuario(admin)
+        self.stdout.write(f"  egresos de demo: {len(provs)} proveedores, 2 compras, 5 gastos")
 
     def _rodeo_demo(self):
         from apps.rodeo.models import Animal

@@ -50,7 +50,8 @@ export async function refrescarSesion(): Promise<boolean> {
 
 export async function api<T = unknown>(ruta: string, opciones: RequestInit = {}, reintentar = true): Promise<T> {
   const headers = new Headers(opciones.headers);
-  if (opciones.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  // Con FormData (fotos) el navegador arma el Content-Type con su separador.
+  if (opciones.body && !(opciones.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
 
   const r = await fetch(`/api/v1${ruta}`, { ...opciones, headers, credentials: "same-origin" });
@@ -63,4 +64,14 @@ export async function api<T = unknown>(ruta: string, opciones: RequestInit = {},
     throw new ApiError(r.status, (datos as { detail?: string }).detail ?? "Error inesperado", datos);
   }
   return (r.status === 204 ? undefined : await r.json()) as T;
+}
+
+/** Baja un archivo protegido (p. ej. la foto de un comprobante) y devuelve una URL local para mostrarlo. */
+export async function archivoProtegido(ruta: string, reintentar = true): Promise<string> {
+  const headers = new Headers();
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+  const r = await fetch(`/api/v1${ruta}`, { headers, credentials: "same-origin" });
+  if (r.status === 401 && reintentar && (await refrescarSesion())) return archivoProtegido(ruta, false);
+  if (!r.ok) throw new ApiError(r.status, "No se pudo abrir el comprobante.");
+  return URL.createObjectURL(await r.blob());
 }
