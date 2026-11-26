@@ -268,11 +268,12 @@ function Cancelar({ ocupado, cancelar }: { ocupado: boolean; cancelar: (motivo: 
 
 function VistaTrazabilidad({ t }: { t: Trazabilidad }) {
   const vacas = new Set(t.origen_leche.flatMap((o) => o.vacas.map((v) => v.caravana)));
+  const clientes = new Set(t.clientes.map((c) => c.cliente));
   const eslabones = [
     { titulo: "Vacas", valor: vacas.size ? `${vacas.size} vacas` : "Sin detalle" },
     { titulo: "Lotes de leche", valor: `${t.origen_leche.length}` },
     { titulo: "Lote de queso", valor: t.codigo },
-    { titulo: "Clientes", valor: "Fase 4" },
+    { titulo: "Clientes", valor: clientes.size ? `${clientes.size} ${clientes.size === 1 ? "cliente" : "clientes"}` : "Sin vender" },
   ];
   return (
     <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-5" aria-labelledby="t-traza">
@@ -280,7 +281,7 @@ function VistaTrazabilidad({ t }: { t: Trazabilidad }) {
       <ol className="flex flex-wrap items-center gap-2 text-sm" aria-label="Cadena del lote">
         {eslabones.map((e, i) => (
           <li key={e.titulo} className="flex items-center gap-2">
-            <span className={`rounded-lg border px-3 py-2 ${i === 2 ? "border-campo-600 bg-campo-50" : i === 3 ? "border-dashed border-stone-300 text-stone-400" : "border-stone-200"}`}>
+            <span className={`rounded-lg border px-3 py-2 ${i === 2 ? "border-campo-600 bg-campo-50" : i === 3 && !clientes.size ? "border-dashed border-stone-300 text-stone-400" : "border-stone-200"}`}>
               <span className="block text-xs text-stone-500">{e.titulo}</span>
               <span className="font-medium">{e.valor}</span>
             </span>
@@ -362,7 +363,25 @@ function VistaTrazabilidad({ t }: { t: Trazabilidad }) {
           ))}
         </ol>
       </div>
-      <p className="text-xs text-stone-500">Los clientes que compraron este queso aparecen acá cuando se registren las ventas (Fase 4).</p>
+      <div>
+        <h4 className="mb-2 text-sm font-semibold">A quién se vendió</h4>
+        {t.clientes.length === 0 ? (
+          <p className="text-sm text-stone-500">Todavía no se vendió queso de este lote. Quedan {kg(t.queso_en_stock_kg)} en stock.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-stone-500"><tr><th className="py-1">Cliente</th><th className="py-1">Venta</th><th className="py-1 text-right">Kg</th></tr></thead>
+            <tbody className="divide-y divide-stone-100">
+              {t.clientes.map((c) => (
+                <tr key={c.venta}>
+                  <td className="py-1.5"><Link href={`/ventas/clientes/${c.cliente}`} className="text-campo-800 hover:underline">{c.nombre}</Link></td>
+                  <td className="py-1.5"><Link href={`/ventas/${c.venta}`} className="hover:underline">{c.codigo_venta}</Link> <span className="text-stone-500">· {fechaCorta(c.fecha)}</span></td>
+                  <td className="py-1.5 text-right tabular-nums">{kg(c.kg)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </section>
   );
 }

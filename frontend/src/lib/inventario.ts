@@ -42,5 +42,5 @@ export const UNIDADES = [
 export const NOMBRE_TIPO: Record<string, string> = { entrada: "Entrada", salida: "Salida", reserva: "Reserva", liberacion: "Liberación" };
 export const NOMBRE_MOTIVO: Record<string, string> = {
   compra: "Compra", ajuste: "Ajuste", elaboracion: "Elaboración", produccion: "Producción", correccion: "Corrección",
-  cancelacion: "Cancelación", venta: "Venta", merma: "Merma",
+  cancelacion: "Cancelación", venta: "Venta", merma: "Merma", devolucion: "Devolución",
 };

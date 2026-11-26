@@ -3,9 +3,10 @@
 Sistema de gestión del tambo: ordeñe, leche, queso paraguayo, inventario, ventas, compras y gastos,
 con el dueño como órgano de control y aprobación.
 
-**Estado: Fase 3 — queso, inventario y ordeñe por vaca.** Fase 1 (base, login, roles, auditoría),
-Fase 2 (registro diario de leche, destinos, correcciones con aprobación, panel y alertas) y Fase 3
-(rodeo y ordeñe por vaca, insumos e inventario, elaboración de queso con aprobación y trazabilidad) terminadas.
+**Estado: Fase 4 — ventas, clientes y cuentas por cobrar.** Fase 1 (base, login, roles, auditoría),
+Fase 2 (registro diario de leche, destinos, correcciones con aprobación, panel y alertas), Fase 3
+(rodeo y ordeñe por vaca, insumos e inventario, elaboración de queso con aprobación y trazabilidad) y
+Fase 4 (clientes, tabla de precios, ventas que descuentan inventario, cuentas por cobrar y cobros) terminadas.
 Plan y decisiones en [DESIGN.md](DESIGN.md).
 
 ## Probarlo sin instalar nada (GitHub Codespaces)
@@ -95,7 +96,7 @@ Si ya tenías la Fase 2 levantada, borrá los datos para que se carguen los nuev
    de lotes pendientes: **Rechazar** exige un comentario; el operador ve el comentario, corrige y vuelve
    a enviar; **Aprobar** deja el queso disponible para la venta (**Inventario → Queso**).
 6. **Trazabilidad.** En cualquier lote de queso: vacas → lotes de leche → lote de queso → insumos (con el
-   lote del proveedor) → clientes (Fase 4), más los movimientos de inventario y el historial. Desde un
+   lote del proveedor) → clientes, más los movimientos de inventario y el historial. Desde un
    lote de leche, la sección *Usado en queso* muestra el otro sentido.
 7. **Inventario.** **Inventario → Insumos**: stock, reservado y disponible; registrar una compra con el lote
    del proveedor. Solo el `admin` hace ajustes (con motivo). **Movimientos** muestra todo lo que entró y
@@ -103,17 +104,42 @@ Si ya tenías la Fase 2 levantada, borrá los datos para que se carguen los nuev
 8. **Cancelar.** Un lote en elaboración se puede cancelar con motivo: los insumos vuelven al stock y la
    leche queda otra vez lista para queso.
 
+## Cómo probar la Fase 4 (ventas, clientes y cuentas por cobrar)
+
+Si ya tenías la Fase 3 levantada, borrá los datos para que se carguen los ejemplos de ventas:
+`docker compose down -v && docker compose up --build`. Quedan 5 clientes de ejemplo, 8 ventas y la tabla
+de precios inicial (queso Gs. 40.000/kg base, 36.000 mayorista, 34.000 distribuidor, 37.000 desde 20 kg;
+leche Gs. 3.500/L, 3.200 desde 100 L).
+
+1. **Registrar venta.** Como `ventas` (en el celular), **Ventas y cobros → Registrar venta**: buscá el
+   cliente (o crealo ahí mismo), elegí queso o leche y escribí la cantidad. El total se calcula solo con
+   el precio que le corresponde al cliente, se ve cuánto hay disponible y de qué lotes va a salir (primero
+   el más viejo). Si pedís más de lo que hay, no te deja.
+2. **Inventario y cuenta.** Al registrar, el stock baja en **Inventario → Queso** (o la leche del lote) y
+   nace la cuenta por cobrar con el vencimiento según la condición del cliente (contado, 7, 15 o 30 días).
+3. **Cobrar.** En la venta, **Registrar cobro** (total o parcial, efectivo o transferencia). Cuando el
+   saldo llega a cero y está entregada, pasa a *Cobrada*.
+4. **Clientes.** **Clientes** lista con lo que debe cada uno y su última compra. Al entrar a un cliente:
+   totales, lotes que recibió y todas sus compras.
+5. **Lote → clientes.** En cualquier lote de queso, **Trazabilidad → A quién se vendió**.
+6. **Cuentas por cobrar** (solo `admin`): total por cobrar, vencido, vendido y cobrado del mes, quién debe,
+   y anular cobros con motivo. El usuario `ventas` no ve esta pestaña (y la API le responde 403).
+7. **Precios.** Todos ven la tabla; solo el `admin` la cambia o vende con un precio distinto al de lista.
+8. **Anular.** Solo el `admin`, con motivo y sin cobros vigentes: el stock vuelve a su lote.
+
 ## Pruebas
 
 ```bash
 docker compose exec backend python -m pytest
 ```
 
-126 pruebas: login, sesión y refresh, usuarios, permisos y menú por rol, auditoría (mixin, logins,
+152 pruebas: login, sesión y refresh, usuarios, permisos y menú por rol, auditoría (mixin, logins,
 inmutabilidad), las reglas de la leche (saldo, destinos, correcciones con aprobación, tablero y
 alertas), el ordeñe por vaca (suma al lote, reenvío, correcciones, tendencia) y el queso (descuento de
 leche e insumos, reservas, consumo real, rendimiento, aprobación solo del Administrador, rechazo y
-corrección, cancelación, inventario inmutable y trazabilidad completa por API).
+corrección, cancelación, inventario inmutable y trazabilidad completa por API) y las ventas (precios por
+tipo y volumen, no vender más que el stock, descuento de inventario y cuenta por cobrar, cobros, anulación
+con devolución del stock, historial del cliente, lote → clientes y permisos de cada rol).
 
 ## Desarrollo sin Docker
 
@@ -210,6 +236,20 @@ Todas bajo `/api/v1`.
 | GET    | `/lotes-queso/{id}/trazabilidad` | Operador, Admin | Cadena completa del lote |
 | GET    | `/lotes-leche/{id}/quesos` | Operador, Admin | En qué quesos terminó un lote de leche |
 | GET    | `/queso/leche-disponible` · `/queso/resumen` | Operador, Admin | Para el asistente y el panel |
+
+## API de la Fase 4
+
+| Método | Ruta | Quién | Para qué |
+| ------ | ---- | ----- | -------- |
+| GET/POST/PATCH | `/clientes` | Todos ven · Ventas y Admin editan | Filtros `buscar`, `tipo`, `activo`; con `saldo_pendiente` y `ultima_compra` |
+| GET    | `/clientes/{id}/historial` | Todos | Totales, lotes recibidos y compras |
+| GET/POST/PATCH | `/precios` | Todos ven · Admin edita | Tabla de precios (base, por tipo de cliente, por volumen) |
+| GET    | `/precios/cotizar?cliente=&producto=&cantidad=` | Todos | Precio, total, stock y lotes disponibles |
+| GET/POST | `/ventas` | Todos ven · Ventas y Admin registran | Filtros `desde`, `hasta`, `cliente`, `producto`, `estado_venta`, `lote_queso`, `buscar` |
+| POST   | `/ventas/{id}/entregar` · `/cobrar` | Ventas, Admin | Entrega; cobro con `monto`, `medio`, `referencia` |
+| POST   | `/ventas/{id}/anular` | Admin | `motivo` (devuelve el stock) |
+| GET    | `/cuentas-por-cobrar` · `/cuentas-por-cobrar-resumen` | Admin | Cuentas (`estado`, `cliente`, `vencidas=1`) y resumen financiero |
+| POST   | `/cuentas-por-cobrar/cobros/{id}/anular` | Admin | `motivo` |
 
 ## Cómo se usa lo construido en las próximas fases
 

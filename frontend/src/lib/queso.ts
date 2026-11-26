@@ -57,7 +57,7 @@ export type Trazabilidad = {
   insumos: { insumo: string; nombre: string; unidad: string; declarada: string; consumida: string | null; lotes_proveedor_recientes: string[] }[];
   movimientos: { fecha: string; item: string; tipo: string; motivo: string; cantidad: string; unidad: string; insumo: string | null; lote_leche: string | null; usuario: string | null }[];
   queso_en_stock_kg: string;
-  clientes: unknown[];
+  clientes: { cliente: string; nombre: string; venta: string; codigo_venta: string; fecha: string; kg: string }[];
   historial: { fecha: string; accion: string; usuario: string | null; motivo: string }[];
 };
 

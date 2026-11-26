@@ -113,6 +113,17 @@ class TestPrecios:
         v = vender(admin, clientes["almacen"], "1", precio_unitario=30_000)
         assert v.precio_unitario == 30_000 and v.precio_de_lista == 40_000 and v.total == 30_000
 
+    def test_admin_cambia_la_tabla_de_precios(self, como, admin, precios):
+        ad = como(admin)
+        r = ad.post("/api/v1/precios", {"producto": "queso", "tipo_cliente": "mayorista", "precio_unitario": 1}, format="json")
+        assert r.status_code == 400 and "Ya hay un precio activo" in str(r.data)
+        fila = Precio.objects.get(producto="queso", tipo_cliente="mayorista")
+        assert ad.patch(f"/api/v1/precios/{fila.pk}", {"precio_unitario": 37_000}, format="json").status_code == 200
+        assert ventas_srv.precio_para("mayorista", "queso", D("1"))[0] == 37_000
+        assert ad.post("/api/v1/precios", {"producto": "leche", "cantidad_minima": "100", "precio_unitario": 3_200},
+                       format="json").status_code == 201
+        assert ventas_srv.precio_para("minorista", "leche", D("150"))[0] == 3_200
+
 
 # --- Registrar venta -------------------------------------------------------------------------
 

@@ -25,6 +25,19 @@ class PrecioSerializer(serializers.ModelSerializer):
         fields = ["id", "producto", "tipo_cliente", "cantidad_minima", "precio_unitario", "activo",
                   "fecha_modificacion"]
         read_only_fields = ["id", "fecha_modificacion"]
+        validators = []  # la unicidad se valida abajo, con un mensaje claro
+
+    def validate(self, datos):
+        actual = self.instance
+        valor = lambda k: datos.get(k, getattr(actual, k, None) if actual else None)  # noqa: E731
+        if valor("activo") is not False:
+            repetido = Precio.objects.filter(activo=True, producto=valor("producto"), tipo_cliente=valor("tipo_cliente") or "",
+                                             cantidad_minima=valor("cantidad_minima") or 0)
+            if actual:
+                repetido = repetido.exclude(pk=actual.pk)
+            if repetido.exists():
+                raise serializers.ValidationError("Ya hay un precio activo para ese producto, tipo de cliente y cantidad mínima.")
+        return datos
 
 
 class VentaLoteSerializer(serializers.ModelSerializer):
