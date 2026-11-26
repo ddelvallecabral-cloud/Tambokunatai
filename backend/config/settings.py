@@ -33,6 +33,9 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.cuentas",
     "apps.leche",
+    "apps.rodeo",
+    "apps.inventario",
+    "apps.queso",
 ]
 
 MIDDLEWARE = [
@@ -122,6 +125,9 @@ REFRESH_COOKIE = {
 # Alerta del panel de leche: si los litros de un día completo quedan por debajo de este valor.
 # 0 o vacío desactiva la alerta.
 LECHE_UMBRAL_LITROS_DIARIOS = env.float("LECHE_UMBRAL_LITROS_DIARIOS", default=0) or None
+# Rango esperado de rendimiento del queso, en litros de leche por kg de queso. Fuera del rango, alerta.
+QUESO_RENDIMIENTO_MIN_L_KG = env.float("QUESO_RENDIMIENTO_MIN_L_KG", default=7.0)
+QUESO_RENDIMIENTO_MAX_L_KG = env.float("QUESO_RENDIMIENTO_MAX_L_KG", default=11.0)
 
 LOGGING = {
     "version": 1,

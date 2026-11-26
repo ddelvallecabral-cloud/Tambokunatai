@@ -59,46 +59,151 @@ class Command(BaseCommand):
                 usuario=user, rol=Rol.objects.get(codigo=rol_codigo), establecimiento=establecimiento
             )
 
-        self._leche_demo(establecimiento)
+        self._demo(establecimiento)
         self.stdout.write(self.style.SUCCESS("Seed listo."))
 
-    def _leche_demo(self, establecimiento):
-        """Historial de ordeñe de los últimos 20 días (sin hoy), solo si todavía no hay lotes.
-        Ayer queda bajo, para que se vea la alerta del panel."""
+    def _demo(self, establecimiento):
+        """Datos de demostración: rodeo, 20 días de ordeñe por vaca, insumos y lotes de queso.
+        Solo se cargan si la base todavía no tiene lotes de leche."""
+        from apps.core.contexto import fijar_usuario, iniciar_contexto, terminar_contexto
+        from apps.leche.models import LoteLeche
+
+        if LoteLeche.objects.exists():
+            return
+        operador = Usuario.objects.get(usuario="operador")
+        admin = Usuario.objects.get(usuario="admin")
+        token = iniciar_contexto()
+        fijar_usuario(operador)
+        try:
+            vacas = self._rodeo_demo()
+            lotes = self._leche_demo(establecimiento, operador, vacas)
+            insumos = self._insumos_demo(admin)
+            self._queso_demo(operador, admin, lotes, insumos)
+        finally:
+            terminar_contexto(token)
+
+    def _rodeo_demo(self):
+        from apps.rodeo.models import Animal
+
+        plantel = [
+            ("101", "Pintada", "Holando", "en_ordene"), ("102", "Mora", "Holando", "en_ordene"),
+            ("103", "Negra", "Holando", "en_ordene"), ("104", "Estrella", "Jersey", "en_ordene"),
+            ("105", "Canela", "Jersey", "en_ordene"), ("106", "Blanca", "Holando", "en_ordene"),
+            ("107", "Lucera", "Girolando", "en_ordene"), ("108", "Paloma", "Girolando", "en_ordene"),
+            ("109", "Manchita", "Holando", "en_ordene"), ("110", "Rubia", "Jersey", "en_ordene"),
+            ("111", "Morocha", "Holando", "seca"), ("112", "Chiquita", "Girolando", "en_recria"),
+        ]
+        vacas = []
+        for caravana, nombre, raza, situacion in plantel:
+            animal, _ = Animal.objects.get_or_create(
+                caravana=caravana,
+                defaults={"nombre": nombre, "raza": raza, "situacion": situacion,
+                          "categoria": "vaquillona" if situacion == "en_recria" else "vaca"},
+            )
+            vacas.append(animal)
+        self.stdout.write(f"  rodeo de demo: {len(vacas)} animales")
+        return [v for v in vacas if v.situacion == "en_ordene"]
+
+    def _leche_demo(self, establecimiento, operador, vacas):
+        """20 días de ordeñe por vaca (sin hoy). Ayer queda bajo para que se vea la alerta del panel.
+        La 105 viene bajando y la 108 subiendo, para que se vea la tendencia."""
         import datetime
         import random
         from decimal import Decimal
 
         from django.utils import timezone
 
-        from apps.core.contexto import fijar_usuario, iniciar_contexto, terminar_contexto
         from apps.leche import servicios
-        from apps.leche.models import LoteLeche
+        from apps.rodeo import servicios as rodeo
 
-        if LoteLeche.objects.exists():
-            return
-        operador = Usuario.objects.get(usuario="operador")
-        token = iniciar_contexto()
-        fijar_usuario(operador)
-        try:
-            azar = random.Random(42)
-            hoy = timezone.localdate()
-            for dias_atras in range(20, 0, -1):
-                fecha = hoy - datetime.timedelta(days=dias_atras)
-                for ordene, base in (("manana", 150), ("tarde", 125)):
-                    litros = Decimal(base + azar.randint(-12, 12))
+        azar = random.Random(42)
+        hoy = timezone.localdate()
+        base = {v.caravana: Decimal(azar.choice([14, 15, 15, 16, 16, 17])) for v in vacas}
+        lotes = {}
+        for dias_atras in range(20, 0, -1):
+            fecha = hoy - datetime.timedelta(days=dias_atras)
+            for ordene, factor in (("manana", Decimal("1")), ("tarde", Decimal("0.82"))):
+                items = []
+                for v in vacas:
+                    litros = base[v.caravana] * factor + Decimal(azar.randint(-10, 10)) / 10
+                    if v.caravana == "105" and dias_atras <= 7:
+                        litros -= 4
+                    if v.caravana == "108" and dias_atras <= 7:
+                        litros += 2
                     if dias_atras == 1:
-                        litros = Decimal(base - 45)
-                    lote, _ = servicios.crear_lote(
-                        operador, fecha=fecha, ordene=ordene, litros=litros, establecimiento=establecimiento,
-                        temperatura_c=Decimal("4.0") if ordene == "manana" else None,
-                    )
-                    venta = Decimal(azar.choice([0, 10, 15, 20]))
-                    if venta:
-                        servicios.asignar_destino(operador, lote, tipo="venta", litros=venta)
-                    if dias_atras > 1:
-                        servicios.asignar_destino(operador, lote, tipo="elaboracion_queso", litros=litros - venta)
-                        servicios.cerrar_lote(operador, lote)
-            self.stdout.write("  historial de leche de demo: 20 días")
-        finally:
-            terminar_contexto(token)
+                        litros *= Decimal("0.8")
+                    items.append({"animal": v, "litros": litros.quantize(Decimal("0.1"))})
+                r = rodeo.registrar_ordene(operador, fecha=fecha, ordene=ordene, items=items)
+                lote = r["lote"]
+                if lote.establecimiento_id is None:
+                    LoteLeche = type(lote)
+                    LoteLeche.objects.filter(pk=lote.pk).update(establecimiento=establecimiento)
+                venta = Decimal(azar.choice([0, 10, 15, 20]))
+                if venta:
+                    servicios.asignar_destino(operador, lote, tipo="venta", litros=venta)
+                if dias_atras > 1:
+                    servicios.asignar_destino(operador, lote, tipo="elaboracion_queso", litros=lote.litros - venta)
+                    servicios.cerrar_lote(operador, lote)
+                lotes[(dias_atras, ordene)] = lote
+        self.stdout.write("  historial de ordeñe por vaca de demo: 20 días")
+        return lotes
+
+    def _insumos_demo(self, admin):
+        from decimal import Decimal
+
+        from apps.inventario import servicios as inventario
+        from apps.inventario.models import Insumo
+
+        catalogo = [
+            ("CUAJO", "Cuajo líquido", "cuajo", "ml", 300, 3000, "CJ-2611"),
+            ("CACL2", "Cloruro de calcio", "aditivo", "ml", 200, 2000, "CC-1102"),
+            ("SAL", "Sal fina", "sal", "kg", 5, 25, ""),
+            ("FERM", "Fermento láctico", "cultivo", "g", 50, 250, "FL-0925"),
+            ("BOLSA", "Bolsa al vacío 1 kg", "envase", "unidad", 100, 400, ""),
+        ]
+        insumos = {}
+        for codigo, nombre, categoria, unidad, minimo, inicial, lote_prov in catalogo:
+            insumo, creado = Insumo.objects.get_or_create(
+                codigo=codigo, defaults={"nombre": nombre, "categoria": categoria, "unidad": unidad,
+                                         "stock_minimo": Decimal(minimo)})
+            if creado:
+                inventario.entrada(admin, insumo, Decimal(inicial), lote_proveedor=lote_prov)
+            insumos[codigo] = insumo
+        self.stdout.write(f"  insumos de demo: {len(insumos)}")
+        return insumos
+
+    def _queso_demo(self, operador, admin, lotes, insumos):
+        """Un lote de queso por día con la leche de la tarde anterior y la mañana.
+        Los de hace 3 días o más quedan aprobados; el de anteayer, pendiente y con rendimiento bajo."""
+        from decimal import Decimal
+
+        from apps.core.contexto import fijar_usuario
+        from apps.queso import servicios as queso
+
+        hechos = 0
+        for dias_atras in range(7, 1, -1):
+            origenes = [lotes[(dias_atras + 1, "tarde")], lotes[(dias_atras, "manana")]]
+            disponibles = [(l, queso.leche_disponible(l)["destinado_a_queso"]) for l in origenes]
+            origenes = [{"lote_leche": l, "litros": x} for l, x in disponibles if x > 0]
+            if not origenes:
+                continue
+            litros = sum((o["litros"] for o in origenes), Decimal("0"))
+            fijar_usuario(operador)
+            fecha = origenes[-1]["lote_leche"].fecha
+            consumo = [("CUAJO", litros * Decimal("0.25")), ("CACL2", litros * Decimal("0.2")),
+                       ("SAL", Decimal("0.6")), ("FERM", Decimal("5"))]
+            lote, _ = queso.iniciar_lote(
+                operador, fecha=fecha, origenes=origenes,
+                insumos=[{"insumo": insumos[c], "cantidad": q.quantize(Decimal("1"))} for c, q in consumo],
+            )
+            rendimiento = Decimal("12.1") if dias_atras == 2 else Decimal("9.2") + Decimal(dias_atras % 3) / 10
+            kg = (litros / rendimiento).quantize(Decimal("0.1"))
+            consumos = [{"insumo": insumos[c], "cantidad": q.quantize(Decimal("1"))} for c, q in consumo]
+            consumos.append({"insumo": insumos["BOLSA"], "cantidad": kg.quantize(Decimal("1"))})
+            queso.cerrar_lote(operador, lote, kg_obtenidos=kg, merma_kg=Decimal("0.3"), consumos=consumos)
+            if dias_atras >= 3:
+                fijar_usuario(admin)
+                queso.aprobar_lote(admin, lote)
+            hechos += 1
+        fijar_usuario(operador)
+        self.stdout.write(f"  lotes de queso de demo: {hechos}")

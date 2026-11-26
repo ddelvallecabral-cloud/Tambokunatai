@@ -160,8 +160,7 @@ class LoteLecheViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
 
     @action(detail=True, methods=["post"])
     def anular(self, request, pk=None):
-        lote = self.get_object()
-        _regla(lote.anular, self._motivo(request))
+        lote = _regla(servicios.anular_lote, request.user, self.get_object(), self._motivo(request))
         return self._respuesta(lote)
 
     @action(detail=False, methods=["get"])
