@@ -19,8 +19,8 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 1. Setup, base de datos, autenticación, usuarios, roles, permisos y auditoría base. ← **hecho**
 2. Producción de leche: lotes por sesión de ordeñe, destinos con saldo, correcciones con aprobación,
    panel con alertas y carga sin conexión. ← **hecho**
-3. Rodeo y ordeñe por vaca, pantalla de usuarios; inventario, insumos, compras y lotes de queso con aprobación
-   (a repartir según prioridad del dueño).
+3. Rodeo y ordeñe por vaca; inventario e insumos; lotes de queso con aprobación y trazabilidad. ← **hecho**
+   (La pantalla de usuarios pasa a la Fase 4 y las compras formales a la Fase 5.)
 4. Clientes, ventas, entregas, cuentas por cobrar y cobros.
 5. Gastos, bandeja de aprobaciones, cierre de mes.
 6. Reportes, tablero del dueño, pantalla de auditoría e importación de planillas.
@@ -54,3 +54,21 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 | Lotes cerrados | Se cierran cuando todos los litros tienen destino. Solo el Administrador los edita, con motivo obligatorio y auditado | Pedido de la Fase 2 |
 | Alerta de litros | `LECHE_UMBRAL_LITROS_DIARIOS` en `.env`. La alerta de hoy aparece recién cuando están cargados los dos ordeñes; la de ayer, siempre | Evita una falsa alarma a la mañana, antes del ordeñe de la tarde |
 | Sin conexión | Si no hay señal al guardar, el lote queda en el teléfono y se envía solo al volver la señal. Cada lote lleva un id generado en el teléfono, así un reintento no duplica | El dueño confirmó que la señal falla en el campo. Requiere tener la app abierta y la sesión iniciada; la app instalable que abre sin señal queda para más adelante |
+
+## Decisiones de la Fase 3 (queso, inventario y ordeñe por vaca)
+
+| Tema | Decisión | Por qué |
+| --- | --- | --- |
+| Ordeñe por vaca | Planilla por sesión (fecha + mañana/tarde) que se guarda completa. La suma de las vacas es el total del lote de leche de esa sesión; si el lote ya existía cargado como total, pasa a ser la suma | Una sola cifra para la sesión: el panel de leche y el rodeo nunca muestran números distintos. Reenviar la planilla no duplica, así funciona sin señal |
+| Correcciones por vaca | El operador corrige la planilla del día; los días anteriores y los lotes cerrados solo el Administrador (con motivo en los cerrados) | Mismo criterio que la Fase 2 |
+| Tendencia | Promedio diario de los últimos 7 días contra los 7 anteriores; ±5 % marca suba o baja | Simple de leer en el campo; el umbral es fácil de ajustar después |
+| Stock | Nunca se guarda: se calcula sumando movimientos. Los movimientos son de solo inserción (trigger de PostgreSQL) y un error se corrige con un movimiento contrario | Consistente y auditable: cada número tiene su rastro |
+| Lote de origen | La base exige que todo movimiento de leche tenga su lote de leche, todo movimiento de queso su lote de queso y toda reserva o consumo para elaborar su lote de queso | Pedido de la Fase 3, garantizado por la base y no solo por el código |
+| Leche para queso | Un lote de queso usa primero los litros ya destinados a "queso" y después el saldo sin destino. Si usa una parte, el destino se parte en dos | Así encaja con los destinos de la Fase 2 sin tocar los totales de leche |
+| Insumos | Al iniciar se reservan (no salen del stock pero no están disponibles para otro lote). Al cerrar se libera la reserva y se descuenta lo usado de verdad, que puede ser distinto | Lo que se declara al empezar rara vez coincide exacto con lo que se usa |
+| Queso al inventario | Entra al cerrar el lote (kg obtenidos menos merma), pero solo está disponible para vender cuando el Administrador aprueba | Pedido: "al finalizar se genera inventario"; la aprobación decide si se puede vender |
+| Rendimiento | Litros de leche ÷ kg obtenidos. Rango esperado en `.env` (`QUESO_RENDIMIENTO_MIN_L_KG` = 7, `MAX` = 11); fuera del rango, el lote queda marcado y se ve en rojo | Valores iniciales razonables para queso Paraguay; conviene ajustarlos con los datos reales del tambo |
+| Aprobación | Solo quien tiene el permiso de aprobar (el Administrador). Además, nadie que no sea el dueño puede aprobar un lote que inició o cerró, aunque se le dé ese permiso en el futuro | Cumple "un Operador no puede aprobar su propio lote" aunque se creen roles nuevos |
+| Rechazo | Exige comentario. El lote se corrige (kg, merma, consumos) y se vuelve a enviar; solo se mueven las diferencias | El historial muestra cada vuelta |
+| Cancelar | Un lote en elaboración se cancela con motivo: se liberan las reservas y la leche queda otra vez destinada a queso | Errores o tandas perdidas no deben trabar el stock |
+| Trazabilidad | Vacas → lote de leche → lote de queso → insumos (con lote del proveedor de las últimas compras) → clientes (Fase 4). También al revés, desde el lote de leche | Pedido de la Fase 3 |

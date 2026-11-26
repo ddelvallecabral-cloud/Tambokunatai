@@ -1,6 +1,7 @@
 """Piezas comunes para las vistas de los módulos."""
 from django.utils.dateparse import parse_date
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import PageNumberPagination
 
 from apps.core.contexto import fijar_usuario
 from apps.cuentas.permisos import requiere_permiso
@@ -27,3 +28,11 @@ class PermisosPorAccion:
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
         fijar_usuario(request.user)
+
+
+class Paginacion(PageNumberPagination):
+    """50 por página; el cliente puede pedir hasta 500 con ?page_size=."""
+
+    page_size = 50
+    page_size_query_param = "page_size"
+    max_page_size = 500
