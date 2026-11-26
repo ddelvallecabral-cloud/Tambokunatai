@@ -138,6 +138,35 @@ function guardarCola(cola: LoteNuevo[]) {
 
 export const pendientesEnCola = () => leerCola();
 
+// Lotes que el servidor rechazó al sincronizar (p. ej. ese ordeñe ya estaba cargado).
+// Quedan guardados para avisarle al usuario y no se pierden en silencio.
+const CLAVE_RECHAZADOS = "tambo.cola.lotes_leche.rechazados";
+
+export function rechazadosDeCola(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE_RECHAZADOS) ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+export function descartarRechazados() {
+  try {
+    localStorage.removeItem(CLAVE_RECHAZADOS);
+  } catch {
+    /* sin almacenamiento */
+  }
+  window.dispatchEvent(new Event("cola-leche"));
+}
+
+function anotarRechazo(mensaje: string) {
+  try {
+    localStorage.setItem(CLAVE_RECHAZADOS, JSON.stringify([...rechazadosDeCola(), mensaje]));
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+
 export async function registrarLote(datos: LoteNuevo): Promise<{ lote?: Lote; enCola: boolean }> {
   try {
     const lote = await api<Lote>("/lotes-leche", { method: "POST", body: JSON.stringify(datos) });
@@ -166,7 +195,10 @@ export async function enviarCola(): Promise<{ enviados: number; errores: string[
       } catch (error) {
         if (!(error instanceof ApiError)) break; // sigue sin señal
         if (error.status === 401) break; // sesión vencida: se reintenta al volver a entrar
-        errores.push(`${datos.fecha} ${datos.ordene}: ${error.message}`);
+        const sesion = datos.ordene === "manana" ? "mañana" : "tarde";
+        const mensaje = `${datos.litros} L del ${datos.fecha} (${sesion}) no se guardaron: ${error.message}`;
+        errores.push(mensaje);
+        anotarRechazo(mensaje);
         guardarCola(leerCola().filter((l) => l.id !== datos.id));
       }
     }
