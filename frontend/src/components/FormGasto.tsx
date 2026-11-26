@@ -88,7 +88,7 @@ export function FormGasto({ gasto, umbral, onGuardado }: { gasto?: Gasto; umbral
       </fieldset>
       <fieldset>
         <legend className="mb-1 text-sm font-medium">Centro de costo</legend>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {CENTROS.map((c) => (
             <button key={c.valor} type="button" aria-pressed={centro === c.valor} onClick={() => setCentro(c.valor)}
               className={`rounded-lg border px-2 py-2 text-sm ${centro === c.valor ? "border-campo-600 bg-campo-50 font-medium text-campo-900" : "border-stone-300 bg-white"}`}>
