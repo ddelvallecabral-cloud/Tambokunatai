@@ -8,6 +8,20 @@ Fase 2 (registro diario de leche, destinos, correcciones con aprobación, panel 
 (rodeo y ordeñe por vaca, insumos e inventario, elaboración de queso con aprobación y trazabilidad) terminadas.
 Plan y decisiones en [DESIGN.md](DESIGN.md).
 
+## Probarlo sin instalar nada (GitHub Codespaces)
+
+1. Con tu cuenta de GitHub abierta, entrá a
+   **<https://codespaces.new/ddelvallecabral-cloud/Tambokunatai?quickstart=1>** y tocá **Create codespace**.
+2. Esperá unos 5 minutos la primera vez: se arma solo (base de datos, sistema y datos de prueba).
+3. Se abre una pestaña con la pantalla de login. Si no se abre, en la parte de abajo del editor andá a
+   **Ports** y tocá el globo al lado de **ERP Tambo (3000)**.
+4. Entrá con `admin` / `Tambo.Admin2026` (o `operador`, `ventas`; ver la tabla de abajo).
+
+Para abrirlo desde el celular: en **Ports**, clic derecho sobre el puerto 3000 → **Port Visibility → Public**
+y abrí esa dirección en el teléfono. Cuando termines, cerrá la pestaña: el codespace se apaga solo a los
+30 minutos sin uso. La cuenta gratuita de GitHub incluye horas de uso por mes de sobra para probar.
+Para retomarlo más tarde: <https://github.com/codespaces>.
+
 ## Cómo levantarlo (Docker)
 
 Requisitos: Docker Desktop (o Docker Engine + Compose).

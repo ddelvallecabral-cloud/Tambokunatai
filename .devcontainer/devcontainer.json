@@ -1,0 +1,17 @@
+{
+  // Abre el ERP en GitHub Codespaces sin instalar nada: el sistema se levanta solo
+  // (base de datos, backend y frontend con datos de prueba) y abre la página de login.
+  "name": "ERP Tambo Kuñatai",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "hostRequirements": { "cpus": 2, "memory": "4gb" },
+  "postCreateCommand": "test -f .env || cp .env.example .env",
+  "postStartCommand": "docker compose up -d --build",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "ERP Tambo", "onAutoForward": "openBrowser" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "ignore" }
+}
