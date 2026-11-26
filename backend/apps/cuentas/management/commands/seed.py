@@ -59,4 +59,46 @@ class Command(BaseCommand):
                 usuario=user, rol=Rol.objects.get(codigo=rol_codigo), establecimiento=establecimiento
             )
 
+        self._leche_demo(establecimiento)
         self.stdout.write(self.style.SUCCESS("Seed listo."))
+
+    def _leche_demo(self, establecimiento):
+        """Historial de ordeñe de los últimos 20 días (sin hoy), solo si todavía no hay lotes.
+        Ayer queda bajo, para que se vea la alerta del panel."""
+        import datetime
+        import random
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from apps.core.contexto import fijar_usuario, iniciar_contexto, terminar_contexto
+        from apps.leche import servicios
+        from apps.leche.models import LoteLeche
+
+        if LoteLeche.objects.exists():
+            return
+        operador = Usuario.objects.get(usuario="operador")
+        token = iniciar_contexto()
+        fijar_usuario(operador)
+        try:
+            azar = random.Random(42)
+            hoy = timezone.localdate()
+            for dias_atras in range(20, 0, -1):
+                fecha = hoy - datetime.timedelta(days=dias_atras)
+                for ordene, base in (("manana", 150), ("tarde", 125)):
+                    litros = Decimal(base + azar.randint(-12, 12))
+                    if dias_atras == 1:
+                        litros = Decimal(base - 45)
+                    lote, _ = servicios.crear_lote(
+                        operador, fecha=fecha, ordene=ordene, litros=litros, establecimiento=establecimiento,
+                        temperatura_c=Decimal("4.0") if ordene == "manana" else None,
+                    )
+                    venta = Decimal(azar.choice([0, 10, 15, 20]))
+                    if venta:
+                        servicios.asignar_destino(operador, lote, tipo="venta", litros=venta)
+                    if dias_atras > 1:
+                        servicios.asignar_destino(operador, lote, tipo="elaboracion_queso", litros=litros - venta)
+                        servicios.cerrar_lote(operador, lote)
+            self.stdout.write("  historial de leche de demo: 20 días")
+        finally:
+            terminar_contexto(token)

@@ -3,9 +3,9 @@
 Sistema de gestión del tambo: ordeñe, leche, queso paraguayo, inventario, ventas, compras y gastos,
 con el dueño como órgano de control y aprobación.
 
-**Estado: Fase 1 — base del sistema** (estructura, base de datos, autenticación, roles y permisos,
-auditoría, login y menú lateral). Los módulos de negocio se construyen en las fases siguientes
-(ver [DESIGN.md](DESIGN.md)).
+**Estado: Fase 2 — producción de leche.** Fase 1 (base, login, roles, auditoría) y Fase 2 (registro
+diario de leche, destinos, correcciones con aprobación, panel y alertas) terminadas.
+Plan y decisiones en [DESIGN.md](DESIGN.md).
 
 ## Cómo levantarlo (Docker)
 
@@ -25,6 +25,7 @@ Abrí <http://localhost:3000> e ingresá con cualquiera de los usuarios de prueb
 | `ventas`   | `Tambo.Ventas2026`   | Ventas        | Inventario, Ventas y cobros, Gastos, Reportes               |
 
 Las claves se cambian en `.env` (`SEED_CLAVE_*`) antes del primer arranque.
+El seed también carga 20 días de ordeñes de ejemplo (ayer queda bajo, para que se vea la alerta).
 Con `SEED_DEMO=0` no se crean usuarios de prueba.
 
 Otros accesos:
@@ -34,14 +35,36 @@ Otros accesos:
 
 Para borrar todo y empezar de cero: `docker compose down -v`.
 
+## Cómo probar la Fase 2 (leche)
+
+1. **Registro desde el celular.** Entrá como `operador` desde el teléfono (misma red: `http://IP-de-la-PC:3000`)
+   o con el navegador en modo celular. Andá a **Leche → Registrar**: la fecha ya es hoy y el ordeñe se
+   elige solo por la hora. Escribí los litros, tocá un destino y **Guardar**.
+2. **Panel.** En **Leche → Panel** tenés los litros de hoy (por ordeñe y destino), del mes, el promedio y
+   los últimos 14 días. Si el día queda por debajo de `LECHE_UMBRAL_LITROS_DIARIOS` (250 L en el ejemplo),
+   aparece la alerta.
+3. **Repartir litros.** Cargá un lote con destino *Pendiente*, abrilo desde **Lotes** y asigná por ejemplo
+   60 L a queso y 25 L a venta: el saldo disponible se recalcula. No te deja asignar más que el saldo.
+4. **Listado y filtros.** En **Lotes** filtrá por fechas, destino (incluye "con litros sin destino") y estado.
+5. **Corrección de un día anterior.** Como `operador`, abrí un lote de ayer y tocá **Corregir datos**:
+   avisa que queda pendiente. Al enviar, el lote pasa a *Corrección pendiente* y los litros no cambian.
+6. **Aprobación.** Entrá como `admin`: el panel muestra "1 corrección espera tu aprobación". Abrila,
+   compará *Ahora* contra *Propuesto* y aprobá o rechazá con motivo.
+7. **Lote cerrado.** Con todo el saldo asignado, **Cerrar lote**. El operador ya no puede editarlo;
+   el admin sí, con motivo obligatorio.
+8. **Sin señal.** Con el modo avión (o las herramientas del navegador sin red) guardá un lote: queda
+   en el teléfono con un aviso amarillo y se envía solo al volver la señal.
+9. **Permisos.** Como `ventas`, el módulo Leche no aparece en el menú y la API responde 403.
+
 ## Pruebas
 
 ```bash
 docker compose exec backend python -m pytest
 ```
 
-45 pruebas cubren login, sesión y refresh, registro de usuarios, permisos por rol,
-menú por rol, auditoría de logins, el mixin de auditoría y la inmutabilidad de la tabla de auditoría.
+80 pruebas: login, sesión y refresh, usuarios, permisos y menú por rol, auditoría (mixin, logins,
+inmutabilidad) y las reglas de negocio de la leche (saldo, destinos, duplicados, correcciones con
+aprobación, lotes cerrados, resumen diario, tablero y alertas).
 
 ## Desarrollo sin Docker
 
@@ -69,6 +92,7 @@ backend/                Django 5.2 + Django REST Framework
   config/               settings, urls
   apps/core/            establecimientos, configuración, auditoría, AuditableModel
   apps/cuentas/         usuarios, roles, permisos, login (JWT), seed
+  apps/leche/           lotes de leche, destinos, correcciones, tablero
   tests/                pruebas (pytest)
 frontend/               Next.js 15 + TypeScript + Tailwind
   src/app/login/        pantalla de login
@@ -96,6 +120,22 @@ Todas bajo `/api/v1`.
 | GET          | `/auditoria`            | `auditoria.ver` (Admin)      | Consultar auditoría (filtros: accion, entidad, usuario, desde, hasta) |
 | GET          | `/auditoria/verificar`  | `auditoria.ver` (Admin)      | Verifica que nadie alteró la auditoría          |
 | GET          | `/salud`                | Público                      | Chequeo de que el sistema responde              |
+
+## API de la Fase 2 (leche)
+
+| Método | Ruta | Quién | Para qué |
+| ------ | ---- | ----- | -------- |
+| GET    | `/lotes-leche` | Operador, Admin | Listado. Filtros: `fecha`, `desde`, `hasta`, `ordene`, `destino` (`pendiente` = con saldo), `estado` |
+| POST   | `/lotes-leche` | Operador, Admin | Registrar lote (`fecha`, `ordene`, `litros`, calidad opcional, `destino`) |
+| GET    | `/lotes-leche/{id}` | Operador, Admin | Detalle con destinos y saldo |
+| PATCH  | `/lotes-leche/{id}` | Operador, Admin | Corregir. Operador en día anterior → queda pendiente; Admin en cerrado → requiere `motivo` |
+| POST   | `/lotes-leche/{id}/destinos` | Operador, Admin | Asignar litros a un destino (`tipo`, `litros`) |
+| DELETE | `/lotes-leche/{id}/destinos/{destino}` | Operador (hoy), Admin | Quitar una asignación |
+| POST   | `/lotes-leche/{id}/cerrar` | Operador, Admin | Cerrar (exige saldo 0) |
+| POST   | `/lotes-leche/{id}/aprobar` · `/rechazar` | Admin | Decidir una corrección pendiente |
+| POST   | `/lotes-leche/{id}/reabrir` · `/anular` | Admin | Con `motivo` |
+| GET    | `/lotes-leche/resumen?fecha=` | Operador, Admin | Litros del día por ordeñe y por destino |
+| GET    | `/leche/tablero` | Operador, Admin | Hoy, mes, últimos 14 días, alertas, correcciones pendientes |
 
 ## Cómo se usa lo construido en las próximas fases
 

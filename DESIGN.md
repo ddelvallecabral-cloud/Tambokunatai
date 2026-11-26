@@ -17,8 +17,10 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 ## Plan de fases
 
 1. Setup, base de datos, autenticación, usuarios, roles, permisos y auditoría base. ← **hecho**
-2. Rodeo, ordeñe por vaca y sesión, lotes de leche (con modo sin conexión) y pantalla de usuarios.
-3. Inventario, insumos, compras y lotes de queso con aprobación.
+2. Producción de leche: lotes por sesión de ordeñe, destinos con saldo, correcciones con aprobación,
+   panel con alertas y carga sin conexión. ← **hecho**
+3. Rodeo y ordeñe por vaca, pantalla de usuarios; inventario, insumos, compras y lotes de queso con aprobación
+   (a repartir según prioridad del dueño).
 4. Clientes, ventas, entregas, cuentas por cobrar y cobros.
 5. Gastos, bandeja de aprobaciones, cierre de mes.
 6. Reportes, tablero del dueño, pantalla de auditoría e importación de planillas.
@@ -40,3 +42,15 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 | Usuario en la auditoría | Contexto por petición (ContextVar) completado por el middleware y la autenticación JWT | Los modelos saben quién actúa sin pasar el usuario a mano |
 | Frontend → backend | Next.js reenvía `/api/*` al backend | Mismo origen: la cookie funciona sin CORS |
 | Nombres de columnas | Los del pedido de Fase 1 (`fecha_creacion`, `modificado_por`…) | Prevalecen sobre los nombres del documento de diseño (`creado_en`, `actualizado_por`) |
+
+## Decisiones de la Fase 2 (leche)
+
+| Tema | Decisión | Por qué |
+| --- | --- | --- |
+| Unidad de registro | Un lote por fecha y ordeñe (mañana / tarde); no se pueden cargar dos para la misma sesión | Así lo pidió la Fase 2 y evita duplicados. El ordeñe por vaca queda para la fase de rodeo |
+| Destino | Se elige al cargar (queso, venta, descarte o pendiente) y se puede repartir después: cada asignación descuenta del saldo disponible, que nunca puede quedar negativo | Interpreté "si destino = queso y venta, calcular saldo" como repartir los litros de un lote entre varios destinos |
+| Destino del lote | Calculado: pendiente, el único destino, o "repartido" | Una sola fuente de verdad: las asignaciones |
+| Corrección de días anteriores | Si un Operador corrige un lote de una fecha anterior, el cambio queda propuesto y el lote pasa a "pendiente de aprobación"; los valores no cambian hasta que el Administrador apruebe | Los totales nunca muestran números sin aprobar |
+| Lotes cerrados | Se cierran cuando todos los litros tienen destino. Solo el Administrador los edita, con motivo obligatorio y auditado | Pedido de la Fase 2 |
+| Alerta de litros | `LECHE_UMBRAL_LITROS_DIARIOS` en `.env`. La alerta de hoy aparece recién cuando están cargados los dos ordeñes; la de ayer, siempre | Evita una falsa alarma a la mañana, antes del ordeñe de la tarde |
+| Sin conexión | Si no hay señal al guardar, el lote queda en el teléfono y se envía solo al volver la señal. Cada lote lleva un id generado en el teléfono, así un reintento no duplica | El dueño confirmó que la señal falla en el campo. Requiere tener la app abierta y la sesión iniciada; la app instalable que abre sin señal queda para más adelante |

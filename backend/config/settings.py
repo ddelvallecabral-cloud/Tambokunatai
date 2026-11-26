@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "apps.core",
     "apps.cuentas",
+    "apps.leche",
 ]
 
 MIDDLEWARE = [
@@ -117,6 +118,10 @@ REFRESH_COOKIE = {
     "secure": env("COOKIE_SECURE"),
     "samesite": "Lax",
 }
+
+# Alerta del panel de leche: si los litros de un día completo quedan por debajo de este valor.
+# 0 o vacío desactiva la alerta.
+LECHE_UMBRAL_LITROS_DIARIOS = env.float("LECHE_UMBRAL_LITROS_DIARIOS", default=0) or None
 
 LOGGING = {
     "version": 1,
