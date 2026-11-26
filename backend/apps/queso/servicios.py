@@ -355,6 +355,11 @@ def _historial(entidad, entidad_id) -> list[dict]:
     } for a in Auditoria.objects.filter(entidad=entidad, entidad_id=str(entidad_id)).select_related("usuario").order_by("id")]
 
 
+def _clientes(lote):
+    from apps.ventas.servicios import clientes_de_lote_queso  # import diferido: ventas depende de queso
+    return clientes_de_lote_queso(lote)
+
+
 def trazabilidad(lote: LoteQueso) -> dict:
     """Cadena completa de un lote de queso: vacas → lotes de leche → lote de queso → insumos → clientes."""
     from apps.rodeo.models import OrdeneVaca
@@ -392,8 +397,7 @@ def trazabilidad(lote: LoteQueso) -> dict:
         "insumos": insumos,
         "movimientos": movimientos,
         "queso_en_stock_kg": _queso_en_inventario(lote),
-        # Las ventas (y por lo tanto los clientes) se registran en la Fase 4.
-        "clientes": [],
+        "clientes": _clientes(lote),
         "historial": _historial("lotes_queso", lote.pk),
     }
 

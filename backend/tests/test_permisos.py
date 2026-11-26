@@ -16,9 +16,10 @@ class TestMenuPorRol:
             "gastos", "aprobaciones", "reportes", "auditoria", "usuarios",
         ]
 
-    def test_operador_ve_produccion_pero_no_ventas_ni_administracion(self, como, operador):
+    def test_operador_ve_produccion_y_ventas_pero_no_administracion(self, como, operador):
+        # Fase 4: el Operador consulta las ventas (solo lectura).
         assert modulos(como(operador)) == [
-            "inicio", "rodeo", "leche", "queso", "inventario", "compras", "gastos", "reportes",
+            "inicio", "rodeo", "leche", "queso", "inventario", "compras", "ventas", "gastos", "reportes",
         ]
 
     def test_ventas_ve_solo_lo_comercial(self, como, ventas):

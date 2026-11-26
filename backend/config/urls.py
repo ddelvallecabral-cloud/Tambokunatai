@@ -12,4 +12,5 @@ urlpatterns = [
     path("api/v1/", include("apps.rodeo.urls")),
     path("api/v1/", include("apps.inventario.urls")),
     path("api/v1/", include("apps.queso.urls")),
+    path("api/v1/", include("apps.ventas.urls")),
 ]

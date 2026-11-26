@@ -12,7 +12,7 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
   mantiene, baja o sube.
 - **Clientes:** principalmente particulares, no acopiadores.
 - **Modo sin conexión:** necesario; la señal en el campo falla.
-- **Ventas de queso:** al contado por ahora; a crédito más adelante.
+- **Ventas:** cada cliente tiene su condición (contado o crédito a 7, 15 o 30 días); define el vencimiento de su cuenta por cobrar.
 
 ## Plan de fases
 
@@ -21,7 +21,7 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
    panel con alertas y carga sin conexión. ← **hecho**
 3. Rodeo y ordeñe por vaca; inventario e insumos; lotes de queso con aprobación y trazabilidad. ← **hecho**
    (La pantalla de usuarios pasa a la Fase 4 y las compras formales a la Fase 5.)
-4. Clientes, ventas, entregas, cuentas por cobrar y cobros.
+4. Clientes, ventas, entregas, cuentas por cobrar y cobros. ← **hecho**
 5. Gastos, bandeja de aprobaciones, cierre de mes.
 6. Reportes, tablero del dueño, pantalla de auditoría e importación de planillas.
 7. Integración SIFEN (opcional).
@@ -71,4 +71,18 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 | Aprobación | Solo quien tiene el permiso de aprobar (el Administrador). Además, nadie que no sea el dueño puede aprobar un lote que inició o cerró, aunque se le dé ese permiso en el futuro | Cumple "un Operador no puede aprobar su propio lote" aunque se creen roles nuevos |
 | Rechazo | Exige comentario. El lote se corrige (kg, merma, consumos) y se vuelve a enviar; solo se mueven las diferencias | El historial muestra cada vuelta |
 | Cancelar | Un lote en elaboración se cancela con motivo: se liberan las reservas y la leche queda otra vez destinada a queso | Errores o tandas perdidas no deben trabar el stock |
-| Trazabilidad | Vacas → lote de leche → lote de queso → insumos (con lote del proveedor de las últimas compras) → clientes (Fase 4). También al revés, desde el lote de leche | Pedido de la Fase 3 |
+| Trazabilidad | Vacas → lote de leche → lote de queso → insumos (con lote del proveedor de las últimas compras) → clientes. También al revés, desde el lote de leche | Pedido de la Fase 3 |
+
+## Decisiones de la Fase 4 (ventas)
+
+| Tema | Decisión | Por qué |
+| ---- | -------- | ------- |
+| Confirmar la venta | Registrar una venta ya la confirma: en la misma transacción se valida el stock, se descuenta lote por lote y nace la cuenta por cobrar. Si algo falla, no queda nada | El pedido: "al confirmar se descuenta el inventario" sin pasos intermedios que se olviden |
+| Qué se puede vender | Queso: solo de lotes aprobados, del más viejo al más nuevo, y nunca de un lote elaborado después de la fecha de la venta. Leche: de cualquier lote con litros sin usar, del más viejo al más nuevo (primero lo ya destinado a venta, después el saldo sin destino) | Primero sale lo más viejo. El dueño pidió no limitar la antigüedad de la leche |
+| Precios | Tabla con precio base, por tipo de cliente y por volumen (cantidad mínima). Se aplica el más bajo que corresponda. Solo el Administrador cambia la tabla o vende fuera de lista; queda registrado el precio de lista de cada venta | Pedido de la Fase 4; el precio de lista guardado permite ver descuentos después |
+| Estados | Pendiente de entrega → Entregada → Cobrada (cuando el saldo llega a cero). La cuenta: pendiente, cobrada en parte, cobrada | Lo que pidió el diseño, con cobros parciales |
+| Anular | Solo el Administrador, con motivo y sin cobros vigentes (primero se anulan los cobros). El stock vuelve a su lote con un movimiento de devolución; nada se borra | Los movimientos de inventario no se editan ni borran |
+| Lotes vendidos | Un lote de leche con ventas no se puede anular ni quitarle el destino usado | No romper la trazabilidad |
+| Información financiera | La vista global de cuentas por cobrar y el resumen (vendido, cobrado, vencido) requieren `reportes.financieros`, que solo tiene el Administrador. Ventas ve el saldo de cada cliente y de cada venta para poder cobrar | "Ventas no accede a reportes financieros globales" |
+| Operador | Ve ventas, clientes y precios; no registra ni edita | Pedido de la Fase 4 |
+

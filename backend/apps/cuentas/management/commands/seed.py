@@ -59,6 +59,7 @@ class Command(BaseCommand):
                 usuario=user, rol=Rol.objects.get(codigo=rol_codigo), establecimiento=establecimiento
             )
 
+        self._precios_demo()
         self._demo(establecimiento)
         self.stdout.write(self.style.SUCCESS("Seed listo."))
 
@@ -79,8 +80,84 @@ class Command(BaseCommand):
             lotes = self._leche_demo(establecimiento, operador, vacas)
             insumos = self._insumos_demo(admin)
             self._queso_demo(operador, admin, lotes, insumos)
+            self._ventas_demo(admin)
         finally:
             terminar_contexto(token)
+
+    def _precios_demo(self):
+        """Tabla de precios inicial (Gs.). Solo si todavía no hay ninguno: después la maneja el Administrador."""
+        from decimal import Decimal
+
+        from apps.core.contexto import fijar_usuario, iniciar_contexto, terminar_contexto
+        from apps.ventas.models import Precio
+
+        if Precio.objects.exists():
+            return
+        token = iniciar_contexto()
+        fijar_usuario(Usuario.objects.get(usuario="admin"))
+        try:
+            for producto, tipo, minimo, precio in (
+                ("queso", "", "0", 40_000),             # precio base (minorista)
+                ("queso", "mayorista", "0", 36_000),
+                ("queso", "distribuidor", "0", 34_000),
+                ("queso", "tienda_propia", "0", 40_000),
+                ("queso", "", "20", 37_000),            # por volumen: desde 20 kg
+                ("leche", "", "0", 3_500),
+                ("leche", "", "100", 3_200),            # por volumen: desde 100 L
+            ):
+                Precio.objects.create(producto=producto, tipo_cliente=tipo, cantidad_minima=Decimal(minimo),
+                                      precio_unitario=precio)
+        finally:
+            terminar_contexto(token)
+        self.stdout.write("  tabla de precios inicial cargada")
+
+    def _ventas_demo(self, admin):
+        """Clientes de ejemplo y ventas de los últimos días: unas cobradas, otras a crédito y una vencida."""
+        import datetime
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from apps.core.contexto import fijar_usuario
+        from apps.ventas import servicios as ventas
+        from apps.ventas.models import Cliente
+
+        vendedor = Usuario.objects.get(usuario="ventas")
+        fijar_usuario(admin)
+        clientes = {c[0]: Cliente.objects.create(nombre=c[0], tipo=c[1], condicion_pago=c[2], telefono=c[3],
+                                                 direccion=c[4]) for c in (
+            ("Despensa San Roque", "minorista", "contado", "0981 456 120", "Ñemby, barrio San Roque"),
+            ("Supermercado La Familia", "mayorista", "credito_15", "021 960 300", "San Lorenzo, Ruta 1"),
+            ("Distribuidora Ñemby", "distribuidor", "credito_30", "0972 300 450", "Ñemby centro"),
+            ("Puesto propio Mercado 4", "tienda_propia", "contado", "", "Asunción, Mercado 4"),
+            ("Bar Doña Juana", "minorista", "credito_7", "0985 777 012", "Ñemby, ruta a Villeta"),
+        )}
+        fijar_usuario(vendedor)
+        hoy = timezone.localdate()
+        hechas = 0
+        for dias, cliente, producto, cantidad, entregada, cobro in (
+            (4, "Supermercado La Familia", "queso", "12", True, "todo"),
+            (4, "Despensa San Roque", "queso", "3", True, "todo"),
+            (3, "Distribuidora Ñemby", "queso", "15", True, "parte"),
+            (3, "Despensa San Roque", "queso", "2", True, ""),       # contado sin cobrar: vencida
+            (2, "Puesto propio Mercado 4", "queso", "6", True, "todo"),
+            (2, "Despensa San Roque", "leche", "20", True, "todo"),
+            (1, "Supermercado La Familia", "queso", "8", True, ""),
+            (1, "Bar Doña Juana", "leche", "15", False, ""),
+        ):
+            fecha = hoy - datetime.timedelta(days=dias)
+            try:
+                venta, _ = ventas.registrar_venta(vendedor, cliente=clientes[cliente], producto=producto,
+                                                  cantidad=Decimal(cantidad), fecha=fecha, entregada=entregada)
+            except Exception as e:  # sin stock suficiente en la demo: se saltea
+                self.stdout.write(f"  venta de demo salteada ({cliente}): {e}")
+                continue
+            if cobro:
+                monto = venta.total if cobro == "todo" else venta.total // 2
+                ventas.registrar_cobro(vendedor, venta.cuenta, monto=monto, fecha=fecha,
+                                       medio="efectivo" if cobro == "todo" else "transferencia")
+            hechas += 1
+        self.stdout.write(f"  clientes de demo: {len(clientes)}, ventas de demo: {hechas}")
 
     def _rodeo_demo(self):
         from apps.rodeo.models import Animal
