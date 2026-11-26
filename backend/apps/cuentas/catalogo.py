@@ -103,7 +103,7 @@ ROLES = {
 # Menú lateral. Un usuario ve un módulo solo si tiene su permiso; `disponible` indica
 # si ya está construido (los que no, se muestran en gris).
 MODULOS = [
-    {"codigo": "inicio", "nombre": "Inicio", "ruta": "/", "permiso": None, "disponible": True, "fase": 1},
+    {"codigo": "inicio", "nombre": "Inicio", "ruta": "/", "permiso": None, "disponible": True, "fase": 6},
     {"codigo": "rodeo", "nombre": "Rodeo", "ruta": "/rodeo", "permiso": "rodeo.ver", "disponible": True, "fase": 3},
     {"codigo": "leche", "nombre": "Leche", "ruta": "/leche", "permiso": "leche.ver", "disponible": True, "fase": 2},
     {"codigo": "queso", "nombre": "Queso", "ruta": "/queso", "permiso": "queso.ver", "disponible": True, "fase": 3},
@@ -111,9 +111,9 @@ MODULOS = [
     {"codigo": "compras", "nombre": "Compras", "ruta": "/compras", "permiso": "compras.ver", "disponible": True, "fase": 5},
     {"codigo": "ventas", "nombre": "Ventas y cobros", "ruta": "/ventas", "permiso": "ventas.ver", "disponible": True, "fase": 4},
     {"codigo": "gastos", "nombre": "Gastos", "ruta": "/gastos", "permiso": "gastos.ver", "disponible": True, "fase": 5},
-    {"codigo": "aprobaciones", "nombre": "Aprobaciones", "ruta": "/aprobaciones", "permiso": "gastos.gasto.aprobar", "disponible": True, "fase": 5},
-    {"codigo": "reportes", "nombre": "Reportes", "ruta": "/reportes", "permiso": "reportes.ver", "disponible": False, "fase": 6},
-    {"codigo": "auditoria", "nombre": "Auditoría", "ruta": "/auditoria", "permiso": "auditoria.ver", "disponible": False, "fase": 6},
+    {"codigo": "aprobaciones", "nombre": "Bandeja de control", "ruta": "/aprobaciones", "permiso": "gastos.gasto.aprobar", "disponible": True, "fase": 5},
+    {"codigo": "reportes", "nombre": "Reportes", "ruta": "/reportes", "permiso": "reportes.ver", "disponible": True, "fase": 6},
+    {"codigo": "auditoria", "nombre": "Auditoría", "ruta": "/auditoria", "permiso": "auditoria.ver", "disponible": True, "fase": 6},
     {"codigo": "usuarios", "nombre": "Usuarios y roles", "ruta": "/usuarios", "permiso": "usuarios.ver", "disponible": True, "fase": 4},
 ]
 

@@ -75,3 +75,21 @@ export async function archivoProtegido(ruta: string, reintentar = true): Promise
   if (!r.ok) throw new ApiError(r.status, "No se pudo abrir el comprobante.");
   return URL.createObjectURL(await r.blob());
 }
+
+/** Baja un archivo generado por el servidor (PDF, Excel) y lo guarda con su nombre. */
+export async function descargar(ruta: string, reintentar = true): Promise<void> {
+  const headers = new Headers();
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+  const r = await fetch(`/api/v1${ruta}`, { headers, credentials: "same-origin" });
+  if (r.status === 401 && reintentar && (await refrescarSesion())) return descargar(ruta, false);
+  if (!r.ok) throw new ApiError(r.status, r.status === 403 ? "No tenés permiso para este reporte." : "No se pudo generar el archivo.");
+  const nombre = /filename="([^"]+)"/.exec(r.headers.get("Content-Disposition") ?? "")?.[1] ?? "reporte";
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

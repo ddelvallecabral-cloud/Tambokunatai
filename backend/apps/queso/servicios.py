@@ -30,7 +30,10 @@ DIAS_LECHE_DISPONIBLE = 7
 
 
 def rango_rendimiento() -> tuple[Decimal, Decimal]:
-    return (Decimal(str(settings.QUESO_RENDIMIENTO_MIN_L_KG)), Decimal(str(settings.QUESO_RENDIMIENTO_MAX_L_KG)))
+    """Lo configura el Administrador en Alertas; por defecto sale del .env."""
+    from apps.reportes import alertas
+
+    return alertas.rango_rendimiento()
 
 
 # --- Leche disponible para elaborar ----------------------------------------------------------
