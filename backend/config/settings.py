@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "apps.inventario",
     "apps.queso",
     "apps.ventas",
+    "apps.compras",
+    "apps.gastos",
 ]
 
 MIDDLEWARE = [
@@ -129,6 +131,14 @@ LECHE_UMBRAL_LITROS_DIARIOS = env.float("LECHE_UMBRAL_LITROS_DIARIOS", default=0
 # Rango esperado de rendimiento del queso, en litros de leche por kg de queso. Fuera del rango, alerta.
 QUESO_RENDIMIENTO_MIN_L_KG = env.float("QUESO_RENDIMIENTO_MIN_L_KG", default=7.0)
 QUESO_RENDIMIENTO_MAX_L_KG = env.float("QUESO_RENDIMIENTO_MAX_L_KG", default=11.0)
+
+# Gastos: por encima de este monto (Gs.) quedan pendientes de aprobación del Administrador.
+GASTO_MONTO_APROBACION = env.int("GASTO_MONTO_APROBACION", default=500_000)
+
+# Fotos de comprobantes. No se sirven como archivos públicos: se bajan por la API con permiso.
+MEDIA_ROOT = Path(env.str("MEDIA_ROOT", default=str(BASE_DIR / "media")))
+COMPROBANTE_MAX_MB = env.int("COMPROBANTE_MAX_MB", default=8)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
 
 LOGGING = {
     "version": 1,

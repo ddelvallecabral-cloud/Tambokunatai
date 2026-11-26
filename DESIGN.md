@@ -86,3 +86,17 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 | Información financiera | La vista global de cuentas por cobrar y el resumen (vendido, cobrado, vencido) requieren `reportes.financieros`, que solo tiene el Administrador. Ventas ve el saldo de cada cliente y de cada venta para poder cobrar | "Ventas no accede a reportes financieros globales" |
 | Operador | Ve ventas, clientes y precios; no registra ni edita | Pedido de la Fase 4 |
 
+## Decisiones de la Fase 5 (proveedores, gastos y compras)
+
+| Tema | Decisión | Por qué |
+| ---- | -------- | ------- |
+| Aprobación de gastos | Un gasto de hasta `GASTO_MONTO_APROBACION` (Gs. 500.000 por defecto, en el `.env`) se aprueba solo al guardarlo. Uno mayor queda *Pendiente* hasta que el Administrador lo apruebe o rechace. Lo que carga el propio Administrador queda aprobado | Pedido de la Fase 5. El Administrador no necesita aprobarse a sí mismo |
+| Rechazo | Rechazar exige un comentario. Quien lo cargó lo ve y puede corregir el gasto y volver a enviarlo; la corrección vuelve a pasar por la regla del monto | Que el rechazo diga qué arreglar |
+| Quién ve qué | Operador y Ventas ven solo los gastos que cargaron (`gastos.ver`); el Administrador ve todos (`gastos.ver_todos`) | Criterio de aceptación de la Fase 5 |
+| Auditoría | Cada gasto y compra guarda quién lo cargó, quién lo aprobó y cuándo. La aprobación automática queda marcada como tal | "Quién aprobó y cuándo" |
+| Comprobantes | Foto (JPEG, PNG, WebP, HEIC) o PDF de hasta `COMPROBANTE_MAX_MB` (8 MB). El celular achica la foto a 1600 px antes de subirla. Se revisa el tipo real del archivo, no solo la extensión. Se guarda fuera del sitio público y solo se baja con sesión iniciada | Fotos de celular pesadas y señal débil en el campo; los comprobantes no deben quedar a la vista de cualquiera |
+| Compras | Registrar una compra ya la confirma: en la misma transacción entra el stock (con el lote del proveedor, si se indica) y nace la cuenta por pagar con el vencimiento según la condición (contado, 15, 30 o 60 días). Si algo falla, no queda nada | "Al confirmar una compra, entrada automática al inventario y cuenta por pagar" |
+| Pagos a proveedores | Solo el Administrador ve las cuentas por pagar y registra pagos (`compras.pago.registrar`). Una compra de contado se puede marcar como ya pagada al cargarla | Información financiera, igual que las cuentas por cobrar |
+| Anular compras | Solo el Administrador, con motivo, sin pagos vigentes y solo si el stock que entró sigue disponible. Se descuenta con un movimiento de anulación; nada se borra | Los movimientos de inventario no se editan ni borran |
+| Bandeja de aprobación | Muestra los gastos pendientes para decidir ahí mismo, con la foto, y avisa de lotes de queso y correcciones de leche que esperan al Administrador | Un solo lugar para todo lo pendiente |
+

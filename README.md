@@ -127,6 +127,27 @@ leche Gs. 3.500/L, 3.200 desde 100 L).
 7. **Precios.** Todos ven la tabla; solo el `admin` la cambia o vende con un precio distinto al de lista.
 8. **Anular.** Solo el `admin`, con motivo y sin cobros vigentes: el stock vuelve a su lote.
 
+## Cómo probar la Fase 5 (proveedores, gastos y compras)
+
+Si ya tenías la Fase 4 levantada, borrá los datos para que se carguen los ejemplos:
+`docker compose down -v && docker compose up --build`. Quedan 4 proveedores, 2 compras y 5 gastos (dos de
+ellos esperando aprobación). El monto que pide aprobación se cambia con `GASTO_MONTO_APROBACION` en el `.env`.
+
+1. **Cargar gasto** (como `operador`, en el celular): **Gastos → Cargar gasto**. Escribí el monto y ya te
+   avisa si se aprueba solo o si va al Administrador. Elegí categoría y centro de costo y sacá la foto del
+   comprobante con la cámara.
+2. **Gasto chico** (Gs. 500.000 o menos): queda *Aprobado (automático)*. **Gasto grande**: queda *Pendiente*.
+3. **Solo los propios.** El `operador` ve solo los gastos que cargó; el `admin` ve todos. Filtros por
+   categoría, centro de costo, estado y fechas.
+4. **Bandeja** (como `admin`): **Aprobaciones**. Tocá un gasto para ver la foto y aprobar o rechazar (el
+   rechazo pide comentario). Quien lo cargó ve el comentario y puede corregirlo y reenviarlo.
+5. **Proveedores**: **Compras → Proveedores**, alta y edición (nombre, tipo, contacto, teléfono, RUC).
+6. **Registrar compra**: proveedor, una o más filas de insumo, cantidad y precio, factura, condición y foto.
+   Al confirmar, el stock sube en **Inventario** y nace la cuenta por pagar.
+7. **Cuentas por pagar** (solo `admin`): total, vencido, comprado y pagado del mes. Los pagos se registran
+   desde la compra y se pueden anular con motivo.
+8. **Anular compra**: solo el `admin`, con motivo y sin pagos vigentes. El stock vuelve a bajar.
+
 ## Usuarios y roles
 
 Como `admin`, **Usuarios y roles**:
@@ -263,6 +284,23 @@ Todas bajo `/api/v1`.
 | POST   | `/ventas/{id}/anular` | Admin | `motivo` (devuelve el stock) |
 | GET    | `/cuentas-por-cobrar` · `/cuentas-por-cobrar-resumen` | Admin | Cuentas (`estado`, `cliente`, `vencidas=1`) y resumen financiero |
 | POST   | `/cuentas-por-cobrar/cobros/{id}/anular` | Admin | `motivo` |
+
+## API de la Fase 5
+
+| Método | Ruta | Quién | Para qué |
+| ------ | ---- | ----- | -------- |
+| GET/POST/PATCH | `/proveedores` | Todos con Compras ven · Operador y Admin editan | Filtros `buscar`, `tipo`, `activo`; con `saldo_pendiente` y `ultima_compra` |
+| GET/POST | `/compras` | Operador y Admin | Registra y confirma (stock + cuenta por pagar). Filtros `desde`, `hasta`, `proveedor`, `insumo`, `estado_compra` |
+| GET/POST | `/compras/{id}/comprobante` | Operador y Admin | Ver o subir la foto/PDF de la factura (multipart, campo `comprobante`) |
+| POST   | `/compras/{id}/pagar` · `/anular` | Admin | Pago (`monto`, `medio`, `referencia`); anulación con `motivo` |
+| GET    | `/cuentas-por-pagar` · `/cuentas-por-pagar-resumen` | Admin | Cuentas (`estado`, `proveedor`, `vencidas=1`) y resumen |
+| POST   | `/cuentas-por-pagar/pagos/{id}/anular` | Admin | `motivo` |
+| GET/POST | `/gastos` | Quien tenga Gastos (cada uno ve los suyos; Admin todos) | Alta multipart con foto. Filtros `categoria`, `centro_costo`, `estado`, `desde`, `hasta` |
+| GET    | `/gastos/resumen` | Igual | Totales, pendientes, por categoría y centro, y el monto que pide aprobación |
+| POST   | `/gastos/{id}/corregir` | Quien lo cargó | Corregir un gasto pendiente o rechazado y reenviarlo |
+| GET    | `/gastos/{id}/comprobante` | Quien lo ve | Foto o PDF |
+| POST   | `/gastos/{id}/aprobar` · `/rechazar` · `/anular` | Admin | `comentario` (obligatorio al rechazar) o `motivo` |
+| GET    | `/aprobaciones/pendientes` | Admin | Cuántos gastos, lotes de queso y correcciones de leche esperan |
 
 ## Cómo se usa lo construido en las próximas fases
 
