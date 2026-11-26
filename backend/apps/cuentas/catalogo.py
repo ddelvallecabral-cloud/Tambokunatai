@@ -100,7 +100,7 @@ ROLES = {
 # si ya está construido (los que no, se muestran en gris).
 MODULOS = [
     {"codigo": "inicio", "nombre": "Inicio", "ruta": "/", "permiso": None, "disponible": True, "fase": 1},
-    {"codigo": "rodeo", "nombre": "Rodeo y ordeñe por vaca", "ruta": "/rodeo", "permiso": "rodeo.ver", "disponible": False, "fase": 3},
+    {"codigo": "rodeo", "nombre": "Rodeo", "ruta": "/rodeo", "permiso": "rodeo.ver", "disponible": False, "fase": 3},
     {"codigo": "leche", "nombre": "Leche", "ruta": "/leche", "permiso": "leche.ver", "disponible": True, "fase": 2},
     {"codigo": "queso", "nombre": "Queso", "ruta": "/queso", "permiso": "queso.ver", "disponible": False, "fase": 3},
     {"codigo": "inventario", "nombre": "Inventario", "ruta": "/inventario", "permiso": "inventario.ver", "disponible": False, "fase": 3},

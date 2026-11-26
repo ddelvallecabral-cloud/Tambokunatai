@@ -263,8 +263,8 @@ class TestResumenYTablero:
         sesion(operador)
         self._cargar(operador)
         mensajes = [a["mensaje"] for a in servicios.tablero()["alertas"]]
-        assert any(m.startswith("Hoy se ordeñaron 200") for m in mensajes)
-        assert any(m.startswith("Ayer se ordeñaron 200") for m in mensajes)
+        assert any(m.startswith("Hoy se ordeñaron 200 L") for m in mensajes)
+        assert any(m.startswith("Ayer se ordeñaron 200 L, por debajo del mínimo de 250 L") for m in mensajes)
 
     @override_settings(LECHE_UMBRAL_LITROS_DIARIOS=150)
     def test_no_alerta_hoy_si_falta_un_ordene(self, operador, sesion):
@@ -279,6 +279,10 @@ class TestResumenYTablero:
         sesion(operador)
         lote(operador, HOY, "manana", "1")
         assert servicios.tablero()["alertas"] == []
+
+    def test_formato_litros(self):
+        assert servicios.formato_litros(D("1234.5")) == "1.234,5 L"
+        assert servicios.formato_litros(D("250")) == "250 L"
 
     def test_tablero_cuenta_correcciones_pendientes(self, operador, sesion):
         sesion(operador)

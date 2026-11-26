@@ -275,6 +275,12 @@ def resumen_dia(fecha: datetime.date) -> dict:
     }
 
 
+def formato_litros(valor: Decimal) -> str:
+    """1234.5 -> "1.234,5 L" (formato paraguayo)."""
+    texto = f"{Decimal(valor):,.1f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    return f"{texto.removesuffix(',0')} L"
+
+
 def umbral_litros_diarios() -> Decimal | None:
     valor = getattr(settings, "LECHE_UMBRAL_LITROS_DIARIOS", None)
     return Decimal(str(valor)) if valor else None
@@ -311,12 +317,14 @@ def tablero(fecha: datetime.date | None = None) -> dict:
         if not hoy_resumen["ordenes_faltantes"] and hoy_resumen["total_litros"] < umbral:
             alertas.append({
                 "nivel": "advertencia", "fecha": fecha,
-                "mensaje": f"Hoy se ordeñaron {hoy_resumen['total_litros']} L, por debajo del mínimo de {umbral} L.",
+                "mensaje": f"Hoy se ordeñaron {formato_litros(hoy_resumen['total_litros'])}, "
+                           f"por debajo del mínimo de {formato_litros(umbral)}.",
             })
         if litros_ayer < umbral:
             alertas.append({
                 "nivel": "advertencia", "fecha": ayer,
-                "mensaje": f"Ayer se ordeñaron {litros_ayer} L, por debajo del mínimo de {umbral} L.",
+                "mensaje": f"Ayer se ordeñaron {formato_litros(litros_ayer)}, "
+                           f"por debajo del mínimo de {formato_litros(umbral)}.",
             })
 
     return {
