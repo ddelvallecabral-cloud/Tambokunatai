@@ -97,6 +97,11 @@ def quitar_destino(usuario, destino: DestinoLeche, motivo: str = "") -> None:
         raise ReglaNegocio("El lote está cerrado o en revisión: solo el Administrador puede cambiar sus destinos.")
     if lote.fecha < hoy() and not admin:
         raise ReglaNegocio("Solo el Administrador puede quitar destinos de días anteriores.")
+    venta = getattr(destino, "uso_venta", None)
+    if venta is not None:
+        raise ReglaNegocio(
+            f"Estos litros ya se vendieron en la venta {venta.venta.codigo}. Para liberarlos hay que anular la venta."
+        )
     uso = getattr(destino, "uso_queso", None)
     if uso is not None:
         raise ReglaNegocio(
@@ -232,6 +237,8 @@ def anular_lote(usuario, lote: LoteLeche, motivo: str) -> LoteLeche:
     lote = LoteLeche.objects.select_for_update().get(pk=lote.pk)
     if lote.usos_queso.filter(destino__isnull=False).exists():
         raise ReglaNegocio("Este lote de leche ya se usó para elaborar queso: no se puede anular.")
+    if lote.ventas.filter(destino__isnull=False).exists():
+        raise ReglaNegocio("Este lote de leche ya se vendió: anulá primero la venta.")
     lote.anular(motivo)
     return lote
 

@@ -76,6 +76,7 @@ class Motivo(models.TextChoices):
     CORRECCION = "correccion", "Corrección de un lote"
     CANCELACION = "cancelacion", "Cancelación de un lote"
     VENTA = "venta", "Venta"
+    DEVOLUCION = "devolucion", "Devolución por venta anulada"
     MERMA = "merma", "Merma"
 
 
@@ -92,6 +93,8 @@ class MovimientoInventario(models.Model):
                                    related_name="movimientos_inventario")
     lote_queso = models.ForeignKey("queso.LoteQueso", null=True, blank=True, on_delete=models.PROTECT,
                                    related_name="movimientos_inventario")
+    venta = models.ForeignKey("ventas.Venta", null=True, blank=True, on_delete=models.PROTECT,
+                              related_name="movimientos_inventario")
     lote_proveedor = models.CharField("lote del proveedor", max_length=60, blank=True)
     nota = models.CharField(max_length=255, blank=True)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT, related_name="+")
@@ -113,6 +116,9 @@ class MovimientoInventario(models.Model):
                 condition=~Q(motivo__in=["elaboracion", "produccion", "cancelacion", "correccion"])
                 | Q(lote_queso__isnull=False),
                 name="movimiento_elaboracion_con_lote_queso"),
+            models.CheckConstraint(
+                condition=~Q(motivo__in=["venta", "devolucion"]) | Q(venta__isnull=False),
+                name="movimiento_venta_con_venta"),
             models.CheckConstraint(
                 condition=Q(item="insumo") | Q(tipo__in=["entrada", "salida"]),
                 name="movimiento_reserva_solo_insumos"),
