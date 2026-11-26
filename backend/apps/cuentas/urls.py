@@ -13,5 +13,6 @@ urlpatterns = [
     path("auth/logout", views.logout, name="auth-logout"),
     path("auth/me", views.perfil, name="auth-me"),
     path("auth/cambiar-clave", views.cambiar_clave, name="auth-cambiar-clave"),
+    path("permisos", views.permisos, name="permisos"),
     *router.urls,
 ]

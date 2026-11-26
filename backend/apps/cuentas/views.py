@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -13,12 +14,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.core import auditoria
 from apps.core.contexto import fijar_usuario
 
-from .models import Rol, Usuario
+from .models import Permiso, Rol, Usuario
 from .permisos import requiere_permiso
 from .serializers import (
     CambiarClaveSerializer,
     LoginSerializer,
     PerfilSerializer,
+    PermisoSerializer,
     RolSerializer,
     UsuarioSerializer,
 )
@@ -134,12 +136,30 @@ class UsuarioViewSet(
     """Usuarios. No se borran: se desactivan con `activo: false`."""
 
     serializer_class = UsuarioSerializer
-    queryset = Usuario.objects.prefetch_related("roles").order_by("nombre")
     http_method_names = ["get", "post", "patch"]
+
+    def get_queryset(self):
+        qs = Usuario.objects.prefetch_related("roles").order_by("-is_active", "nombre")
+        p = self.request.query_params
+        if p.get("buscar"):
+            t = p["buscar"].strip()
+            qs = qs.filter(Q(nombre__icontains=t) | Q(usuario__icontains=t) | Q(email__icontains=t))
+        if p.get("rol"):
+            qs = qs.filter(roles__codigo=p["rol"])
+        if p.get("activo") in ("0", "1"):
+            qs = qs.filter(is_active=p["activo"] == "1")
+        return qs.distinct()
 
     def get_permissions(self):
         codigo = "usuarios.ver" if self.action in ("list", "retrieve") else "usuarios.gestionar"
         return [requiere_permiso(codigo)()]
+
+
+@api_view(["GET"])
+@permission_classes([requiere_permiso("usuarios.ver")])
+def permisos(request):
+    """Catálogo de permisos (para la matriz de roles)."""
+    return Response(PermisoSerializer(Permiso.objects.order_by("modulo", "codigo"), many=True).data)
 
 
 class RolViewSet(viewsets.ReadOnlyModelViewSet):

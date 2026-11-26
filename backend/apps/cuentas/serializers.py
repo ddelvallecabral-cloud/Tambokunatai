@@ -4,7 +4,8 @@ from rest_framework import serializers
 
 from apps.core import auditoria
 
-from .models import Rol, Usuario, UsuarioRol
+from .catalogo import ADMIN
+from .models import Permiso, Rol, Usuario, UsuarioRol
 from .servicios import modulos_de
 
 
@@ -31,6 +32,12 @@ class RolSerializer(serializers.ModelSerializer):
     class Meta:
         model = Rol
         fields = ["id", "codigo", "nombre", "descripcion", "es_sistema", "permisos"]
+
+
+class PermisoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Permiso
+        fields = ["codigo", "modulo", "descripcion"]
 
 
 class PerfilSerializer(serializers.ModelSerializer):
@@ -75,6 +82,19 @@ class UsuarioSerializer(serializers.ModelSerializer):
         return valor.strip().lower()
 
     def validate(self, datos):
+        actual = self.instance
+        solicitante = self.context["request"].user if "request" in self.context else None
+        if actual is not None and solicitante is not None and actual.pk == solicitante.pk:
+            if datos.get("is_active") is False:
+                raise serializers.ValidationError({"activo": "No podés desactivar tu propio usuario."})
+            if "roles" in datos and ADMIN not in {r.codigo for r in datos["roles"]} and ADMIN in actual.roles_codigos():
+                raise serializers.ValidationError({"roles": "No podés quitarte el rol de Administrador a vos mismo."})
+        if actual is not None and ADMIN in actual.roles_codigos():
+            deja_de_ser_admin = datos.get("is_active") is False or (
+                "roles" in datos and ADMIN not in {r.codigo for r in datos["roles"]})
+            otros = Usuario.objects.filter(is_active=True, roles__codigo=ADMIN).exclude(pk=actual.pk).exists()
+            if deja_de_ser_admin and not otros:
+                raise serializers.ValidationError({"roles": "Tiene que quedar al menos un Administrador activo."})
         if self.instance is None and not datos.get("clave"):
             raise serializers.ValidationError({"clave": "La clave es obligatoria al crear un usuario."})
         if datos.get("clave"):
@@ -93,6 +113,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
     def create(self, datos):
         roles = datos.pop("roles")
         clave = datos.pop("clave")
+        datos.setdefault("debe_cambiar_clave", True)
         usuario = Usuario.objects.create_user(password=clave, **datos)
         self._asignar_roles(usuario, roles)
         auditoria.registrar(
@@ -114,6 +135,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
         if clave:
             usuario.set_password(clave)
             cambios["clave"] = "restablecida"
+            if "debe_cambiar_clave" not in datos:
+                usuario.debe_cambiar_clave = True  # la clave la puso el Administrador: que la cambie al entrar
         usuario.save()
         if cambios:
             auditoria.registrar("editar", "usuarios", usuario.pk, cambios=cambios)

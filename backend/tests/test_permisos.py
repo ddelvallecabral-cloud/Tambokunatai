@@ -89,3 +89,37 @@ class TestGestionDeUsuarios:
         como(admin).patch(f"/api/v1/usuarios/{ventas.pk}", {"activo": False}, format="json")
         ventas.refresh_from_db()
         assert not ventas.is_active
+
+
+@pytest.mark.django_db
+class TestPantallaUsuarios:
+    def test_alta_obliga_a_cambiar_la_clave_y_restablecer_tambien(self, como, admin, ventas):
+        ad = como(admin)
+        r = ad.post("/api/v1/usuarios", {"usuario": "rosa", "nombre": "Rosa", "clave": "Tambo.Rosa.2026",
+                                         "roles": ["VENTAS"]}, format="json")
+        assert r.status_code == 201 and r.data["debe_cambiar_clave"] is True
+        r = ad.patch(f"/api/v1/usuarios/{ventas.pk}", {"clave": "Tambo.Nueva.2026"}, format="json")
+        assert r.status_code == 200 and r.data["debe_cambiar_clave"] is True
+        assert Auditoria.objects.filter(accion="editar", entidad_id=str(ventas.pk), cambios__clave="restablecida").exists()
+
+    def test_el_admin_no_se_desactiva_ni_se_quita_el_rol(self, como, admin):
+        ad = como(admin)
+        assert ad.patch(f"/api/v1/usuarios/{admin.pk}", {"activo": False}, format="json").status_code == 400
+        r = ad.patch(f"/api/v1/usuarios/{admin.pk}", {"roles": ["OPERADOR"]}, format="json")
+        assert r.status_code == 400 and "a vos mismo" in str(r.data)
+
+    def test_otro_administrador_si_puede_cambiarle_el_rol(self, como, admin):
+        from .conftest import crear_usuario
+        otro = crear_usuario("dueno2", "ADMIN")
+        r = como(otro).patch(f"/api/v1/usuarios/{admin.pk}", {"roles": ["VENTAS"]}, format="json")
+        assert r.status_code == 200
+        # Ahora otro es el único Administrador: no se puede quedar sin ninguno.
+        assert como(otro).patch(f"/api/v1/usuarios/{otro.pk}", {"roles": ["VENTAS"]}, format="json").status_code == 400
+
+    def test_filtros_y_catalogo_de_permisos(self, como, admin, operador, ventas):
+        ad = como(admin)
+        assert [u["usuario"] for u in ad.get("/api/v1/usuarios", {"rol": "VENTAS"}).data["results"]] == ["ventas"]
+        assert ad.get("/api/v1/usuarios", {"buscar": "opera"}).data["count"] == 1
+        p = ad.get("/api/v1/permisos").data
+        assert {"codigo": "ventas.ver", "modulo": "ventas", "descripcion": "Ver ventas y clientes"} in p
+        assert como(ventas).get("/api/v1/permisos").status_code == 403
