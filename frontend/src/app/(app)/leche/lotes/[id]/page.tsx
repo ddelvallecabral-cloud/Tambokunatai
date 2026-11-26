@@ -105,6 +105,8 @@ export default function DetalleLote() {
         asignar={(tipo, l) => ejecutar(post("/destinos", { tipo, litros: l }), "Destino asignado.")}
         quitar={(destinoId) => ejecutar(() => api<Lote>(`/lotes-leche/${lote.id}/destinos/${destinoId}`, { method: "DELETE", body: "{}" }), "Destino quitado.")} />
 
+      <UsosEnQueso loteId={lote.id} version={lote.litros_asignados} verQueso={puede("queso.ver")} />
+
       {lote.estado !== "anulado" && lote.estado !== "pendiente" && (puede("leche.lote.gestionar") && (abierto || admin)) && (
         <Edicion lote={lote} admin={admin} diaAnterior={diaAnterior} ocupado={ocupado}
           guardar={(cambios) => ejecutar(
@@ -286,5 +288,29 @@ function AccionConMotivo({ etiqueta, visible, ocupado, ejecutar }: {
       <button disabled={ocupado || !motivo.trim()} onClick={async () => { if (await ejecutar(motivo)) setAbierta(false); }} className={`${boton} bg-stone-800 text-white`}>{etiqueta}</button>
       <button onClick={() => setAbierta(false)} className={`${boton} border border-stone-300`}>Cancelar</button>
     </div>
+  );
+}
+
+type UsoQueso = { lote_queso: string; codigo: string; fecha: string; estado: string; litros: string; vigente: boolean };
+
+/** Trazabilidad hacia adelante: en qué lotes de queso terminó esta leche. */
+function UsosEnQueso({ loteId, version, verQueso }: { loteId: string; version: string; verQueso: boolean }) {
+  const [usos, setUsos] = useState<UsoQueso[] | null>(null);
+  useEffect(() => {
+    api<{ lotes_queso: UsoQueso[] }>(`/lotes-leche/${loteId}/quesos`).then((r) => setUsos(r.lotes_queso)).catch(() => setUsos([]));
+  }, [loteId, version]);
+  if (!usos?.length) return null;
+  return (
+    <section className="rounded-2xl border border-stone-200 bg-white p-5" aria-labelledby="usos-queso">
+      <h3 id="usos-queso" className="mb-2 font-semibold">Usado en queso</h3>
+      <ul className="space-y-1 text-sm">
+        {usos.map((u, i) => (
+          <li key={i} className="flex justify-between gap-2">
+            {verQueso ? <Link href={`/queso/${u.lote_queso}`} className="font-medium text-campo-800 hover:underline">{u.codigo}</Link> : <span className="font-medium">{u.codigo}</span>}
+            <span className="tabular-nums text-stone-600">{litros(u.litros)}{!u.vigente && " · lote cancelado"}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

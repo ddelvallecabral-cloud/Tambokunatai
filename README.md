@@ -3,8 +3,9 @@
 Sistema de gestión del tambo: ordeñe, leche, queso paraguayo, inventario, ventas, compras y gastos,
 con el dueño como órgano de control y aprobación.
 
-**Estado: Fase 2 — producción de leche.** Fase 1 (base, login, roles, auditoría) y Fase 2 (registro
-diario de leche, destinos, correcciones con aprobación, panel y alertas) terminadas.
+**Estado: Fase 3 — queso, inventario y ordeñe por vaca.** Fase 1 (base, login, roles, auditoría),
+Fase 2 (registro diario de leche, destinos, correcciones con aprobación, panel y alertas) y Fase 3
+(rodeo y ordeñe por vaca, insumos e inventario, elaboración de queso con aprobación y trazabilidad) terminadas.
 Plan y decisiones en [DESIGN.md](DESIGN.md).
 
 ## Cómo levantarlo (Docker)
@@ -25,7 +26,9 @@ Abrí <http://localhost:3000> e ingresá con cualquiera de los usuarios de prueb
 | `ventas`   | `Tambo.Ventas2026`   | Ventas        | Inventario, Ventas y cobros, Gastos, Reportes               |
 
 Las claves se cambian en `.env` (`SEED_CLAVE_*`) antes del primer arranque.
-El seed también carga 20 días de ordeñes de ejemplo (ayer queda bajo, para que se vea la alerta).
+El seed también carga datos de ejemplo: 12 animales, 20 días de ordeñe por vaca (ayer queda bajo, para que
+se vea la alerta; la 105 viene bajando y la 108 subiendo), 5 insumos con stock y 6 lotes de queso
+(5 aprobados y 1 pendiente con rendimiento fuera de rango).
 Con `SEED_DEMO=0` no se crean usuarios de prueba.
 
 Otros accesos:
@@ -56,15 +59,47 @@ Para borrar todo y empezar de cero: `docker compose down -v`.
    en el teléfono con un aviso amarillo y se envía solo al volver la señal.
 9. **Permisos.** Como `ventas`, el módulo Leche no aparece en el menú y la API responde 403.
 
+## Cómo probar la Fase 3 (queso, inventario y ordeñe por vaca)
+
+Si ya tenías la Fase 2 levantada, borrá los datos para que se carguen los nuevos ejemplos:
+`docker compose down -v && docker compose up --build`.
+
+1. **Ordeñe por vaca.** Como `operador` (en el celular), **Rodeo → Ordeñe por vaca**. Aparecen las vacas
+   en ordeñe; escribí los litros de cada una (Enter pasa a la siguiente) y **Guardar planilla**. El total
+   de las vacas es el lote de leche de esa sesión. Volver a guardar la misma planilla no duplica nada, y
+   sin señal queda en el teléfono hasta que vuelva.
+2. **Tendencia.** En **Rodeo → Vacas** se ve el promedio diario de cada vaca en los últimos 7 días contra
+   los 7 anteriores; las que bajan aparecen primero. Tocando una vaca, el gráfico de 30 días.
+3. **Iniciar lote (paso 1).** **Queso → Iniciar lote**: marcá los lotes de leche de origen (ajustá los
+   litros si no usás todo) y los insumos que vas a usar. Al iniciar, la leche se descuenta y los insumos
+   quedan reservados (en **Inventario** se ven como *Reservado*).
+4. **Cerrar lote (paso 2).** En el lote, tocá **Cerrar lote** sin kg: no te deja. Cargá los kg obtenidos
+   (y la merma, si hubo) y lo que realmente se usó de cada insumo. Mientras escribís ves el rendimiento
+   en L/kg y si cae fuera del rango (`QUESO_RENDIMIENTO_MIN_L_KG` / `MAX`, 7 a 11 por defecto).
+   Al cerrar, el lote pasa a *Pendiente de aprobación* y el queso entra al inventario "en revisión".
+5. **Aprobación.** El operador no ve los botones de aprobar. Como `admin`, en **Queso** aparece el aviso
+   de lotes pendientes: **Rechazar** exige un comentario; el operador ve el comentario, corrige y vuelve
+   a enviar; **Aprobar** deja el queso disponible para la venta (**Inventario → Queso**).
+6. **Trazabilidad.** En cualquier lote de queso: vacas → lotes de leche → lote de queso → insumos (con el
+   lote del proveedor) → clientes (Fase 4), más los movimientos de inventario y el historial. Desde un
+   lote de leche, la sección *Usado en queso* muestra el otro sentido.
+7. **Inventario.** **Inventario → Insumos**: stock, reservado y disponible; registrar una compra con el lote
+   del proveedor. Solo el `admin` hace ajustes (con motivo). **Movimientos** muestra todo lo que entró y
+   salió; no se puede editar ni borrar.
+8. **Cancelar.** Un lote en elaboración se puede cancelar con motivo: los insumos vuelven al stock y la
+   leche queda otra vez lista para queso.
+
 ## Pruebas
 
 ```bash
 docker compose exec backend python -m pytest
 ```
 
-80 pruebas: login, sesión y refresh, usuarios, permisos y menú por rol, auditoría (mixin, logins,
-inmutabilidad) y las reglas de negocio de la leche (saldo, destinos, duplicados, correcciones con
-aprobación, lotes cerrados, resumen diario, tablero y alertas).
+126 pruebas: login, sesión y refresh, usuarios, permisos y menú por rol, auditoría (mixin, logins,
+inmutabilidad), las reglas de la leche (saldo, destinos, correcciones con aprobación, tablero y
+alertas), el ordeñe por vaca (suma al lote, reenvío, correcciones, tendencia) y el queso (descuento de
+leche e insumos, reservas, consumo real, rendimiento, aprobación solo del Administrador, rechazo y
+corrección, cancelación, inventario inmutable y trazabilidad completa por API).
 
 ## Desarrollo sin Docker
 
@@ -93,6 +128,9 @@ backend/                Django 5.2 + Django REST Framework
   apps/core/            establecimientos, configuración, auditoría, AuditableModel
   apps/cuentas/         usuarios, roles, permisos, login (JWT), seed
   apps/leche/           lotes de leche, destinos, correcciones, tablero
+  apps/rodeo/           animales, ordeñe por vaca y sesión, tendencia
+  apps/inventario/      insumos y movimientos de inventario (solo inserción)
+  apps/queso/           lotes de queso, aprobación, trazabilidad, stock de leche y queso
   tests/                pruebas (pytest)
 frontend/               Next.js 15 + TypeScript + Tailwind
   src/app/login/        pantalla de login
@@ -136,6 +174,28 @@ Todas bajo `/api/v1`.
 | POST   | `/lotes-leche/{id}/reabrir` · `/anular` | Admin | Con `motivo` |
 | GET    | `/lotes-leche/resumen?fecha=` | Operador, Admin | Litros del día por ordeñe y por destino |
 | GET    | `/leche/tablero` | Operador, Admin | Hoy, mes, últimos 14 días, alertas, correcciones pendientes |
+
+## API de la Fase 3
+
+| Método | Ruta | Quién | Para qué |
+| ------ | ---- | ----- | -------- |
+| GET/POST | `/animales` | Operador, Admin | Plantel (con promedio 7 días y tendencia) y alta |
+| PATCH  | `/animales/{id}` | Operador, Admin | Editar (situación, nombre, raza) |
+| GET    | `/animales/{id}/produccion?dias=30` | Operador, Admin | Serie diaria mañana/tarde |
+| GET    | `/rodeo/ordene?fecha=&ordene=` | Operador, Admin | Planilla de la sesión |
+| POST   | `/rodeo/ordene` | Operador, Admin | Guardar planilla completa (`fecha`, `ordene`, `items`, `destino`) |
+| GET/POST | `/insumos` | Todos ven · Admin crea | Insumos con `stock`, `reservado`, `disponible`, `bajo_minimo` |
+| POST   | `/insumos/{id}/entrada` | Operador (compra), Admin (ajuste) | Entrada con `lote_proveedor` |
+| POST   | `/insumos/{id}/salida` | Admin | Ajuste con `nota` obligatoria |
+| GET    | `/movimientos-inventario` | Todos | Filtros: `item`, `tipo`, `insumo`, `lote_leche`, `lote_queso`, `desde`, `hasta` |
+| GET    | `/inventario/leche` · `/inventario/queso` | Todos | Leche disponible para queso; queso por lote |
+| GET/POST | `/lotes-queso` | Operador, Admin | Listado (filtros `estado`, `desde`, `hasta`, `fuera_de_rango`) e inicio |
+| POST   | `/lotes-queso/{id}/cerrar` | Operador, Admin | `kg_obtenidos` (obligatorio), `merma_kg`, `consumos` |
+| POST   | `/lotes-queso/{id}/aprobar` · `/rechazar` | Admin | `comentario` (obligatorio al rechazar) |
+| POST   | `/lotes-queso/{id}/cancelar` | Quien lo inició, Admin | `motivo` |
+| GET    | `/lotes-queso/{id}/trazabilidad` | Operador, Admin | Cadena completa del lote |
+| GET    | `/lotes-leche/{id}/quesos` | Operador, Admin | En qué quesos terminó un lote de leche |
+| GET    | `/queso/leche-disponible` · `/queso/resumen` | Operador, Admin | Para el asistente y el panel |
 
 ## Cómo se usa lo construido en las próximas fases
 

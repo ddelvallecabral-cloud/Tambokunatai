@@ -9,4 +9,7 @@ urlpatterns = [
     path("api/v1/", include("apps.cuentas.urls")),
     path("api/v1/", include("apps.core.urls")),
     path("api/v1/", include("apps.leche.urls")),
+    path("api/v1/", include("apps.rodeo.urls")),
+    path("api/v1/", include("apps.inventario.urls")),
+    path("api/v1/", include("apps.queso.urls")),
 ]

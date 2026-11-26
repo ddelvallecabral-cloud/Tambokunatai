@@ -40,6 +40,7 @@ PERMISOS = [
     ("inventario.ajuste.proponer", "inventario", "Proponer ajustes de inventario"),
     ("inventario.ajuste.aprobar", "inventario", "Aprobar ajustes de inventario"),
     ("inventario.catalogo.gestionar", "inventario", "Editar productos, insumos y depósitos"),
+    ("inventario.entrada.registrar", "inventario", "Registrar entradas de insumos (compras)"),
     # Ventas
     ("ventas.ver", "ventas", "Ver ventas y clientes"),
     ("ventas.cliente.gestionar", "ventas", "Crear y editar clientes"),
@@ -78,7 +79,7 @@ ROLES = {
             "rodeo.ver", "rodeo.animal.gestionar", "rodeo.ordene.registrar", "rodeo.tratamiento.registrar",
             "leche.ver", "leche.lote.gestionar", "leche.lote.cerrar",
             "queso.ver", "queso.lote.gestionar", "queso.lote.enviar",
-            "inventario.ver", "inventario.ajuste.proponer",
+            "inventario.ver", "inventario.ajuste.proponer", "inventario.entrada.registrar",
             "compras.ver", "compras.compra.registrar",
             "gastos.ver", "gastos.gasto.registrar",
             "reportes.ver", "reportes.operativos",
@@ -100,17 +101,17 @@ ROLES = {
 # si ya está construido (los que no, se muestran en gris).
 MODULOS = [
     {"codigo": "inicio", "nombre": "Inicio", "ruta": "/", "permiso": None, "disponible": True, "fase": 1},
-    {"codigo": "rodeo", "nombre": "Rodeo", "ruta": "/rodeo", "permiso": "rodeo.ver", "disponible": False, "fase": 3},
+    {"codigo": "rodeo", "nombre": "Rodeo", "ruta": "/rodeo", "permiso": "rodeo.ver", "disponible": True, "fase": 3},
     {"codigo": "leche", "nombre": "Leche", "ruta": "/leche", "permiso": "leche.ver", "disponible": True, "fase": 2},
-    {"codigo": "queso", "nombre": "Queso", "ruta": "/queso", "permiso": "queso.ver", "disponible": False, "fase": 3},
-    {"codigo": "inventario", "nombre": "Inventario", "ruta": "/inventario", "permiso": "inventario.ver", "disponible": False, "fase": 3},
-    {"codigo": "compras", "nombre": "Compras", "ruta": "/compras", "permiso": "compras.ver", "disponible": False, "fase": 3},
+    {"codigo": "queso", "nombre": "Queso", "ruta": "/queso", "permiso": "queso.ver", "disponible": True, "fase": 3},
+    {"codigo": "inventario", "nombre": "Inventario", "ruta": "/inventario", "permiso": "inventario.ver", "disponible": True, "fase": 3},
+    {"codigo": "compras", "nombre": "Compras", "ruta": "/compras", "permiso": "compras.ver", "disponible": False, "fase": 5},
     {"codigo": "ventas", "nombre": "Ventas y cobros", "ruta": "/ventas", "permiso": "ventas.ver", "disponible": False, "fase": 4},
     {"codigo": "gastos", "nombre": "Gastos", "ruta": "/gastos", "permiso": "gastos.ver", "disponible": False, "fase": 5},
     {"codigo": "aprobaciones", "nombre": "Aprobaciones", "ruta": "/aprobaciones", "permiso": "gastos.gasto.aprobar", "disponible": False, "fase": 5},
     {"codigo": "reportes", "nombre": "Reportes", "ruta": "/reportes", "permiso": "reportes.ver", "disponible": False, "fase": 6},
     {"codigo": "auditoria", "nombre": "Auditoría", "ruta": "/auditoria", "permiso": "auditoria.ver", "disponible": False, "fase": 6},
-    {"codigo": "usuarios", "nombre": "Usuarios y roles", "ruta": "/usuarios", "permiso": "usuarios.ver", "disponible": False, "fase": 3},
+    {"codigo": "usuarios", "nombre": "Usuarios y roles", "ruta": "/usuarios", "permiso": "usuarios.ver", "disponible": False, "fase": 4},
 ]
 
 

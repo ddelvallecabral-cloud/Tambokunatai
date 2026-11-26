@@ -13,15 +13,11 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.core import auditoria
-from apps.core.mixins import EstadoRegistro
+from apps.core.mixins import EstadoRegistro, ReglaNegocio  # noqa: F401  (ReglaNegocio se reexporta)
 
 from .models import CERO, DESTINO_PENDIENTE, DestinoLeche, LoteLeche, Ordene, TipoDestino
 
 PERMISO_APROBAR = "leche.lote.aprobar"
-
-
-class ReglaNegocio(Exception):
-    """Una operación que las reglas del tambo no permiten. El mensaje es para el usuario."""
 
 
 def hoy() -> datetime.date:
@@ -101,6 +97,12 @@ def quitar_destino(usuario, destino: DestinoLeche, motivo: str = "") -> None:
         raise ReglaNegocio("El lote está cerrado o en revisión: solo el Administrador puede cambiar sus destinos.")
     if lote.fecha < hoy() and not admin:
         raise ReglaNegocio("Solo el Administrador puede quitar destinos de días anteriores.")
+    uso = getattr(destino, "uso_queso", None)
+    if uso is not None:
+        raise ReglaNegocio(
+            f"Estos litros ya se usaron en el lote de queso {uso.lote_queso.codigo}. "
+            "Para liberarlos hay que cancelar ese lote de queso."
+        )
     auditoria.registrar(
         "quitar_destino", "lotes_leche", lote.pk,
         cambios={"destino": destino.tipo, "litros": destino.litros}, motivo=motivo,
@@ -222,6 +224,15 @@ def rechazar_correccion(usuario, lote: LoteLeche, motivo: str) -> LoteLeche:
         raise ReglaNegocio("Este lote no tiene una corrección pendiente.")
     lote.cambios_propuestos = None
     lote.rechazar(motivo)
+    return lote
+
+
+@transaction.atomic
+def anular_lote(usuario, lote: LoteLeche, motivo: str) -> LoteLeche:
+    lote = LoteLeche.objects.select_for_update().get(pk=lote.pk)
+    if lote.usos_queso.filter(destino__isnull=False).exists():
+        raise ReglaNegocio("Este lote de leche ya se usó para elaborar queso: no se puede anular.")
+    lote.anular(motivo)
     return lote
 
 

@@ -66,6 +66,10 @@ class TransicionInvalida(Exception):
     pass
 
 
+class ReglaNegocio(Exception):
+    """Una operación que las reglas del tambo no permiten. El mensaje es para el usuario."""
+
+
 class AuditableModel(models.Model):
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="+", editable=False
