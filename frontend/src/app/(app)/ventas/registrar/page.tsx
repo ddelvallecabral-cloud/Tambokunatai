@@ -149,7 +149,6 @@ function RegistrarVenta() {
         {cotizacion && (
           <p className={`text-sm ${sinStock ? "font-medium text-red-700" : "text-stone-600"}`}>
             Disponible para vender: {n2.format(stock)} {unidad}
-            {producto === "leche" && " (leche de los últimos 3 días)"}
             {sinStock && ` · faltan ${n2.format(cantidad - stock)} ${unidad}`}
           </p>
         )}

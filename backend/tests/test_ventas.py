@@ -190,12 +190,14 @@ class TestRegistrarVenta:
         with pytest.raises(ReglaNegocio, match="No hay stock suficiente"):
             vender(admin, clientes["almacen"], "71", producto="leche")
 
-    def test_leche_de_hace_mas_de_tres_dias_no_se_vende(self, operador, ventas, sesion, clientes):
+    def test_leche_vieja_tambien_se_vende(self, operador, ventas, sesion, clientes):
         sesion(operador)
-        leche.crear_lote(operador, fecha=HOY - datetime.timedelta(days=3), ordene="manana", litros=D("100"))
+        leche.crear_lote(operador, fecha=HOY - datetime.timedelta(days=10), ordene="manana", litros=D("100"))
         sesion(ventas)
-        with pytest.raises(ReglaNegocio, match="hay 0 L"):
-            vender(ventas, clientes["almacen"], "10", producto="leche")
+        v = vender(ventas, clientes["almacen"], "60", producto="leche")
+        assert v.lotes.get().cantidad == D("60")
+        with pytest.raises(ReglaNegocio, match="hay 40 L"):
+            vender(ventas, clientes["almacen"], "41", producto="leche")
 
     def test_no_sale_de_un_lote_elaborado_despues_de_la_venta(self, ventas, sesion, clientes, quesos):
         sesion(ventas)

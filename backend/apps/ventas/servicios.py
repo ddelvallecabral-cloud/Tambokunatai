@@ -25,8 +25,6 @@ from .models import (
 )
 
 CERO = Decimal("0")
-# Leche cruda: solo se vende la de los últimos días.
-DIAS_LECHE_VENDIBLE = 3
 PERMISO_PRECIOS = "ventas.precio.gestionar"
 PERMISO_ANULAR = "ventas.venta.aprobar"
 _CANDADO_NUMERO = 7_340_022
@@ -81,10 +79,11 @@ def leche_vendible(lote_leche: LoteLeche) -> Decimal:
 
 
 def stock_leche_vendible(fecha=None) -> list[dict]:
+    """Lotes de leche con litros para vender (sin límite de antigüedad), del más viejo al más nuevo.
+    Solo los de hasta la fecha de la venta."""
     fecha = fecha or hoy()
-    desde = fecha - datetime.timedelta(days=DIAS_LECHE_VENDIBLE - 1)
     filas = []
-    for lote in leche.con_totales(leche.lotes_validos().filter(fecha__gte=desde, fecha__lte=fecha)).order_by("fecha", "ordene"):
+    for lote in leche.con_totales(leche.lotes_validos().filter(fecha__lte=fecha)).order_by("fecha", "ordene"):
         litros = leche_vendible(lote)
         if litros > 0:
             filas.append({"lote": lote, "id": lote.pk, "codigo": lote.codigo, "fecha": lote.fecha, "disponible": litros})
