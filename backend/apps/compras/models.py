@@ -141,4 +141,5 @@ class Pago(models.Model):
 
     class Meta:
         db_table = "pagos"
+        indexes = [models.Index(fields=["fecha"], name="pago_fecha_idx")]
         ordering = ["fecha", "fecha_creacion"]

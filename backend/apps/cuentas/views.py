@@ -26,6 +26,28 @@ from .serializers import (
 )
 
 ERROR_LOGIN = "Usuario o clave incorrectos."
+ERROR_BLOQUEO = "Demasiados intentos fallidos con este usuario. Esperá {minutos} minutos y probá de nuevo."
+
+
+def _usuario_bloqueado(nombre: str) -> bool:
+    """Bloqueo temporal por usuario (además del límite por IP): N fallos seguidos en la ventana.
+
+    Se cuenta desde la auditoría, así funciona igual con varios procesos del servidor. Los fallos
+    anteriores al último ingreso correcto no cuentan.
+    """
+    from datetime import timedelta
+
+    from apps.core.models import Auditoria
+
+    maximo = settings.LOGIN_FALLOS_MAX
+    if not maximo:
+        return False
+    desde = timezone.now() - timedelta(minutes=settings.LOGIN_BLOQUEO_MINUTOS)
+    ultimo_ok = Usuario.objects.filter(usuario=nombre).values_list("last_login", flat=True).first()
+    if ultimo_ok and ultimo_ok > desde:
+        desde = ultimo_ok
+    fallos = Auditoria.objects.filter(accion="login_fallido", fecha__gte=desde, cambios__usuario=nombre).count()
+    return fallos >= maximo
 
 
 def _poner_cookie_refresh(response, refresh: str):
@@ -50,6 +72,9 @@ def login(request):
     datos = LoginSerializer(data=request.data)
     datos.is_valid(raise_exception=True)
     nombre = datos.validated_data["usuario"].strip().lower()
+    if _usuario_bloqueado(nombre):
+        return Response({"detail": ERROR_BLOQUEO.format(minutos=settings.LOGIN_BLOQUEO_MINUTOS), "codigo": "bloqueado"},
+                        status=status.HTTP_429_TOO_MANY_REQUESTS)
     usuario = authenticate(request, usuario=nombre, password=datos.validated_data["clave"])
 
     if usuario is None:

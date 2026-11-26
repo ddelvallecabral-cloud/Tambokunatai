@@ -24,7 +24,7 @@ from apps.core.models import Auditoria
 from apps.gastos.models import CentroCosto, Gasto
 from apps.leche.models import LoteLeche
 from apps.queso.models import LoteQueso
-from apps.ventas.models import Cobro, CuentaPorCobrar, EstadoCuenta, EstadoVenta, Producto, Venta, VentaLote
+from apps.ventas.models import UNIDAD_PRODUCTO, Cobro, CuentaPorCobrar, EstadoCuenta, EstadoVenta, Producto, Venta, VentaLote
 
 from . import alertas as config_alertas
 
@@ -577,4 +577,37 @@ def pendientes_control() -> dict:
 
     return pendientes_de_aprobacion() | {
         "registros_editados": len(registros_editados(solo_sin_revisar=True)),
+    }
+
+
+# --- Mis ventas (rol Ventas) ---------------------------------------------------------------------
+
+def mis_ventas(usuario, desde, hasta, fecha=None) -> dict:
+    """Lo que vendió y cobró un vendedor en el período, y lo que le queda por cobrar de sus ventas."""
+    fecha = fecha or hoy()
+    propias = ventas_validas().filter(creado_por=usuario, fecha__gte=desde, fecha__lte=hasta)
+    por_producto = []
+    for p in Producto:
+        fila = propias.filter(producto=p.value).aggregate(total=Sum("total"), cantidad=Sum("cantidad"), ventas=Count("id"))
+        por_producto.append({"producto": p.value, "nombre": p.label, "unidad": UNIDAD_PRODUCTO[p.value],
+                             "ventas": fila["ventas"], "cantidad": fila["cantidad"] or CERO, "total": fila["total"] or 0})
+    cobrado = Cobro.objects.filter(usuario=usuario, anulado=False, fecha__gte=desde, fecha__lte=hasta) \
+        .aggregate(t=Sum("monto"))["t"] or 0
+    abiertas = CuentaPorCobrar.objects.filter(venta__creado_por=usuario,
+                                              estado__in=[EstadoCuenta.PENDIENTE, EstadoCuenta.PARCIAL])
+    por_cobrar = vencido = 0
+    for c in abiertas.values("monto", "cobrado", "vencimiento"):
+        saldo = c["monto"] - c["cobrado"]
+        por_cobrar += saldo
+        if c["vencimiento"] < fecha:
+            vencido += saldo
+    ventas = [{
+        "id": str(v.id), "codigo": v.codigo, "fecha": v.fecha, "cliente": v.cliente.nombre, "producto": v.producto,
+        "cantidad": v.cantidad, "unidad": UNIDAD_PRODUCTO[v.producto], "total": v.total,
+        "saldo": v.cuenta.saldo if hasattr(v, "cuenta") else 0,
+    } for v in propias.select_related("cliente", "cuenta").order_by("-fecha", "-numero")[:100]]
+    return {
+        "desde": desde, "hasta": hasta, "total": sum(p["total"] for p in por_producto),
+        "cantidad_ventas": sum(p["ventas"] for p in por_producto), "por_producto": por_producto,
+        "cobrado": cobrado, "por_cobrar": por_cobrar, "vencido": vencido, "ventas": ventas,
     }

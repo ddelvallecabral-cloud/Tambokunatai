@@ -81,6 +81,8 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
 ]
 AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+     "OPTIONS": {"user_attributes": ["usuario", "nombre"]}},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -101,7 +103,10 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "apps.core.vistas.Paginacion",
     "PAGE_SIZE": 50,
     "DEFAULT_THROTTLE_RATES": {"login": env("LOGIN_THROTTLE", default="30/min")},
-    # Cantidad de proxies delante (Next.js) para tomar la IP real del cliente de X-Forwarded-For.
+    # Cuántos proxies propios escriben X-Forwarded-For delante de Django. Next.js no cuenta: solo lo
+    # completa si viene vacío. En producción es 1 (Caddy lo reescribe con la IP real; ver DESPLIEGUE.md).
+    # Sin Caddy (entorno de prueba) el cliente puede inventar ese encabezado: el bloqueo por usuario
+    # (LOGIN_FALLOS_MAX) sigue protegiendo cada cuenta igual.
     "NUM_PROXIES": env.int("NUM_PROXIES", default=1),
     "EXCEPTION_HANDLER": "apps.core.excepciones.manejador_excepciones",
 }
@@ -116,6 +121,23 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "uid",
 }
+
+# Bloqueo por usuario: tras LOGIN_FALLOS_MAX claves incorrectas seguidas, ese usuario espera
+# LOGIN_BLOQUEO_MINUTOS (0 desactiva). Se suma al límite por IP de LOGIN_THROTTLE.
+LOGIN_FALLOS_MAX = env.int("LOGIN_FALLOS_MAX", default=5)
+LOGIN_BLOQUEO_MINUTOS = env.int("LOGIN_BLOQUEO_MINUTOS", default=15)
+
+# --- Producción detrás de HTTPS (Caddy) ---
+# El proxy avisa que la conexión original fue HTTPS; con COOKIE_SECURE=True todas las cookies viajan cifradas.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = env("COOKIE_SECURE")
+SESSION_COOKIE_HTTPONLY = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+SECURE_HSTS_SECONDS = env.int("HSTS_SEGUNDOS", default=0)
+# Límite de cuerpo de las peticiones que no son archivos (los comprobantes tienen su propio límite).
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
 # Cookie donde viaja el refresh token (httpOnly: el JavaScript del navegador no puede leerlo).
 REFRESH_COOKIE = {

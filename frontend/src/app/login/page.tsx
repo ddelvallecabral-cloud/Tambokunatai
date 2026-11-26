@@ -26,12 +26,17 @@ export default function LoginPage() {
       await ingresar(nombre, clave);
       router.replace("/");
     } catch (err) {
+      const bloqueado = err instanceof ApiError && (err.datos as { codigo?: string } | undefined)?.codigo === "bloqueado";
       setError(
-        err instanceof ApiError && err.status === 429
-          ? "Demasiados intentos. Esperá un minuto."
-          : err instanceof ApiError && err.status === 401
-            ? "Usuario o clave incorrectos."
-            : "No se pudo conectar con el servidor.",
+        bloqueado
+          ? (err as ApiError).message
+          : err instanceof ApiError && err.status === 429
+            ? "Demasiados intentos desde este equipo. Esperá un minuto."
+            : err instanceof ApiError && err.status === 401
+              ? "Usuario o clave incorrectos."
+              : err instanceof ApiError && err.status === 0
+                ? err.message
+                : "No se pudo conectar con el servidor. Probá de nuevo en un rato.",
       );
     } finally {
       setEnviando(false);

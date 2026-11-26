@@ -1,0 +1,19 @@
+# Caddy pide y renueva solo el certificado HTTPS para el dominio (DOMINIO en el .env).
+{$DOMINIO} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+	# Fotos de comprobantes: el límite real lo pone el backend (COMPROBANTE_MAX_MB).
+	request_body {
+		max_size 20MB
+	}
+	# La IP del cliente la pone Caddy y reemplaza cualquier X-Forwarded-For que venga de afuera
+	# (alguien podría mandar uno inventado para esquivar el límite de intentos o ensuciar la auditoría).
+	reverse_proxy frontend:3000 {
+		header_up X-Forwarded-For {remote_host}
+	}
+}

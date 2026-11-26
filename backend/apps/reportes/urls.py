@@ -9,6 +9,7 @@ urlpatterns = [
     path("reportes/rentabilidad-lotes", views.rentabilidad_lotes),
     path("reportes/rentabilidad-productos", views.rentabilidad_productos),
     path("reportes/aprobaciones", views.historial_aprobaciones),
+    path("reportes/mis-ventas", views.mis_ventas),
     path("reportes/<str:nombre>.<str:formato>", views.exportar_reporte),
     path("control/registros-editados", views.registros_editados),
     path("control/registros-editados/<int:auditoria_id>/revisar", views.revisar_registro),

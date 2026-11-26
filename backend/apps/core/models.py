@@ -63,6 +63,7 @@ class Auditoria(models.Model):
 
     class Meta:
         db_table = "auditoria"
+        indexes = [models.Index(fields=["accion", "fecha"], name="auditoria_accion_fecha_idx")]
         ordering = ["-id"]
         verbose_name_plural = "auditoría"
 

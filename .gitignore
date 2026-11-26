@@ -9,3 +9,4 @@ frontend/.next/
 frontend/next-env.d.ts
 frontend/tsconfig.tsbuildinfo
 backend/media/
+respaldos/

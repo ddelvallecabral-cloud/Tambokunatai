@@ -55,6 +55,9 @@ export default function Insumos() {
                 alMover={(texto) => { setAviso({ tipo: "ok", texto }); setAbierto(null); cargar(); }}
                 alFallar={(texto) => setAviso({ tipo: "error", texto })} />
             ))}
+            {insumos?.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-stone-500">Todavía no hay insumos cargados. Agregá el cuajo, la sal y lo que uses para elaborar.</td></tr>
+            )}
           </tbody>
         </table>
       </div>

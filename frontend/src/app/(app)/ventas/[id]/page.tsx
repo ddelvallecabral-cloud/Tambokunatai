@@ -103,7 +103,7 @@ function Detalle() {
               <Truck className="h-5 w-5" aria-hidden /> Marcar como entregada
             </button>
           )}
-          {venta.fecha_entrega && <p className="text-sm text-stone-600">Entregada el {fechaHora(venta.fecha_entrega)}.</p>}
+          {venta.fecha_entrega && <p className="text-sm text-stone-600">Entregada el {fechaHora(venta.fecha_entrega)}</p>}
           {cuenta && cuenta.saldo > 0 && puede("ventas.cobro.registrar") && (
             <Cobrar saldo={cuenta.saldo} ocupado={ocupado} onCobrar={(c) => accion("cobrar", c, "Cobro registrado.")} />
           )}

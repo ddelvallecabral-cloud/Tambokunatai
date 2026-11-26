@@ -353,3 +353,27 @@ class TestAlertas:
         op = como(operador)
         assert op.get("/api/v1/alertas/configuracion").status_code == 200
         assert op.put("/api/v1/alertas/configuracion", {"stock_bajo": {"activa": False}}, format="json").status_code == 403
+
+
+@pytest.mark.django_db
+class TestMisVentas:
+    URL = "/api/v1/reportes/mis-ventas?desde=2026-11-01&hasta=2026-11-26"
+
+    def test_cada_vendedor_ve_solo_lo_suyo(self, como, admin, ventas, operador, mes, sesion):
+        from apps.ventas.models import Cliente
+        sesion(ventas)
+        v, _ = ventas_srv.registrar_venta(ventas, cliente=Cliente.objects.first(), producto="leche", cantidad=D("10"),
+                                          fecha=nov(15))
+        ventas_srv.registrar_cobro(ventas, v.cuenta, monto=20_000, fecha=nov(15))
+
+        propio = como(ventas).get(self.URL)
+        assert propio.status_code == 200
+        assert propio.data["cantidad_ventas"] == 1 and propio.data["total"] == v.total
+        assert propio.data["cobrado"] == 20_000 and propio.data["por_cobrar"] == v.total - 20_000
+        assert [x["codigo"] for x in propio.data["ventas"]] == [v.codigo]
+
+        del_admin = como(admin).get(self.URL).data
+        assert del_admin["cantidad_ventas"] == 2 and del_admin["total"] == 575_000   # la anulada no cuenta
+        assert del_admin["cobrado"] == 500_000 and del_admin["por_cobrar"] == 75_000
+
+        assert como(operador).get(self.URL).status_code == 403

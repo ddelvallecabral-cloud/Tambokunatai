@@ -85,6 +85,14 @@ def rentabilidad_productos(request):
 
 
 @api_view(["GET"])
+@permission_classes([requiere_alguno("reportes.ventas_propias", FINANCIEROS)])
+def mis_ventas(request):
+    """Ventas y cobros del usuario que consulta: cada vendedor ve solo lo suyo."""
+    desde, hasta = _periodo(request)
+    return Response(servicios.mis_ventas(request.user, desde, hasta))
+
+
+@api_view(["GET"])
 @permission_classes([requiere_permiso("auditoria.ver")])
 def historial_aprobaciones(request):
     desde, hasta = _periodo(request)

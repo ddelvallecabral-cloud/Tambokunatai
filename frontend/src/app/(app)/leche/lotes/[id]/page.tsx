@@ -7,6 +7,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { DESTINOS, fechaCorta, hoyISO, litros, NOMBRE_DESTINO, NOMBRE_ESTADO, type Lote, type TipoDestino } from "@/lib/leche";
+import { Confirmar } from "@/components/Confirmar";
 
 const CAMPOS: { clave: keyof Lote; nombre: string }[] = [
   { clave: "fecha", nombre: "Fecha" },
@@ -117,7 +118,7 @@ export default function DetalleLote() {
 
       <div className="flex flex-wrap gap-2">
         {abierto && saldo === 0 && puede("leche.lote.cerrar") && (
-          <button disabled={ocupado} onClick={() => ejecutar(post("/cerrar"), "Lote cerrado.")} className={`${boton} bg-stone-800 text-white`}>Cerrar lote</button>
+          <Confirmar disabled={ocupado} onConfirmar={() => ejecutar(post("/cerrar"), "Lote cerrado.")} pregunta="¿Cerrar? Después solo el Administrador lo puede cambiar." si="Sí, cerrar" className={`${boton} bg-stone-800 text-white`}>Cerrar lote</Confirmar>
         )}
         {admin && <AccionConMotivo etiqueta="Anular lote" visible={lote.estado !== "anulado"} ocupado={ocupado}
           ejecutar={(motivo) => ejecutar(post("/anular", { motivo }), "Lote anulado.")} />}
@@ -183,9 +184,10 @@ function Destinos({ lote, abierto, admin, ocupado, asignar, quitar }: {
               <span className="flex-1">{NOMBRE_DESTINO[d.tipo]}{d.nota && <span className="text-stone-500"> · {d.nota}</span>}</span>
               <span className="font-medium tabular-nums">{litros(d.litros)}</span>
               {puedeQuitar && (
-                <button disabled={ocupado} onClick={() => quitar(d.id)} aria-label={`Quitar ${NOMBRE_DESTINO[d.tipo]}`} className="text-stone-400 hover:text-red-600">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <Confirmar disabled={ocupado} onConfirmar={() => quitar(d.id)} etiqueta={`Quitar ${NOMBRE_DESTINO[d.tipo]}`}
+                  pregunta="¿Quitar?" si="Sí, quitar" className="p-1 text-stone-400 hover:text-red-600">
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </Confirmar>
               )}
             </li>
           ))}

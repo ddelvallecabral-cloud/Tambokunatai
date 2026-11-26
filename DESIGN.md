@@ -25,7 +25,8 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 5. Gastos, bandeja de aprobaciones, cierre de mes. ← **hecho**
 6. Reportes, tablero del dueño, bandeja de control, alertas y pantalla de auditoría. ← **hecho**
    (La importación de planillas no entró en el pedido de la Fase 6: queda para cuando el dueño la pida.)
-7. Integración SIFEN (opcional).
+7. Calidad, seguridad, rendimiento, manuales y puesta en producción. ← **hecho**
+   (La integración SIFEN quedó fuera: ver [deudas técnicas](#deudas-técnicas-conocidas-y-funcionalidades-futuras).)
 
 ## Decisiones técnicas de la Fase 1
 
@@ -35,11 +36,11 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 | Migraciones | Las de Django (equivalente a Alembic) | Vienen integradas con el ORM |
 | Contraseñas | Argon2 + validadores (mín. 8, no comunes, no solo números) | Recomendación actual de OWASP |
 | Sesión | JWT de acceso de 15 min en memoria + refresh de 7 días en cookie httpOnly, rotado en cada uso y con lista negra | El JavaScript no puede robar el refresh; un refresh usado o cerrado no sirve más |
-| Login | Limitado a 30 intentos por minuto por IP | Freno a ataques de fuerza bruta. Hasta poner un proxy HTTPS (Caddy) delante en el despliegue, el backend ve la IP del contenedor del frontend: el límite es compartido y la auditoría registra esa IP en lugar de la del celular |
+| Login | Limitado a 30 intentos por minuto por IP | Freno a ataques de fuerza bruta. Resuelto en la Fase 7: en producción Caddy escribe la IP real y el backend la toma (`NUM_PROXIES=1`) |
 | Registro | Solo el Administrador crea usuarios (`POST /usuarios`), no hay registro público | Es un sistema interno |
 | Permisos | Granulares (`modulo.entidad.accion`); roles = paquetes de permisos definidos en `catalogo.py` | Se puede crear un rol nuevo sin tocar código de las vistas |
 | Menú | El backend devuelve los módulos visibles para cada usuario | El frontend no decide permisos; un ítem no permitido nunca llega |
-| Auditoría | Tabla de solo inserción con cadena de hashes SHA-256; triggers de PostgreSQL bloquean UPDATE, DELETE y TRUNCATE | Nadie puede alterarla desde el sistema; una edición puntual hecha directo en la base se detecta con `/auditoria/verificar`. (Alguien con control total del servidor podría recalcular toda la cadena: para eso, en una fase posterior, se guarda una copia diaria del último hash fuera del servidor) |
+| Auditoría | Tabla de solo inserción con cadena de hashes SHA-256; triggers de PostgreSQL bloquean UPDATE, DELETE y TRUNCATE | Nadie puede alterarla desde el sistema; una edición puntual hecha directo en la base se detecta con `/auditoria/verificar`. (Alguien con control total del servidor podría recalcular toda la cadena; la copia diaria del último hash fuera del servidor quedó como deuda técnica) |
 | Usuario en la auditoría | Contexto por petición (ContextVar) completado por el middleware y la autenticación JWT | Los modelos saben quién actúa sin pasar el usuario a mano |
 | Frontend → backend | Next.js reenvía `/api/*` al backend | Mismo origen: la cookie funciona sin CORS |
 | Nombres de columnas | Los del pedido de Fase 1 (`fecha_creacion`, `modificado_por`…) | Prevalecen sobre los nombres del documento de diseño (`creado_en`, `actualizado_por`) |
@@ -116,3 +117,50 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 | Registros editados | La bandeja lista ediciones de registros cerrados o aprobados, correcciones aplicadas, reaperturas y anulaciones de cobros, pagos o registros aprobados. "Revisado" se guarda aparte (`revisiones_registro`) porque la auditoría no se modifica | Control del dueño sin tocar la tabla inmutable |
 | Alertas | Umbrales en la configuración del establecimiento (no en el `.env`), editables por el Administrador y auditados. Producción baja mira los últimos 7 días (hoy solo cuando ya hay ordeñe cargado) | Que el dueño las ajuste sin tocar el servidor |
 | Exportes | PDF (reportlab) y Excel (openpyxl) generados en el servidor con el mismo cálculo que la pantalla. Nombre: `reporte_desde_hasta` | Que el archivo coincida con lo que se ve |
+
+## Decisiones de la Fase 7 (calidad, seguridad y puesta en marcha)
+
+| Tema | Decisión | Por qué |
+| ---- | -------- | ------- |
+| Bloqueo por claves mal | Tras `LOGIN_FALLOS_MAX` (5) claves mal seguidas, ese usuario espera `LOGIN_BLOQUEO_MINUTOS` (15). Se cuenta desde la auditoría (`login_fallido`) y se reinicia con una entrada correcta. Se suma al límite de 30 intentos por minuto por IP | El límite por IP no frena a quien prueba claves desde muchas IP contra un mismo usuario |
+| Claves | Además de las reglas de la Fase 1, no pueden parecerse al usuario ni al nombre | Recomendación de OWASP |
+| IP del cliente | El backend toma la IP que escribió el último proxy propio (`NUM_PROXIES`), no la primera de `X-Forwarded-For`. En producción Caddy reescribe ese encabezado | Next.js no agrega la IP si el encabezado ya viene: sin esto, un celular podía inventar su IP en la auditoría y esquivar el límite |
+| Encabezados | HSTS, `nosniff`, `X-Frame-Options: DENY`, política de referer; cookies `Secure` con `COOKIE_SECURE`. El backend avisa al arrancar si la `SECRET_KEY` es la de ejemplo o falta `COOKIE_SECURE` con HTTPS | Configuración segura por defecto, con aviso cuando no |
+| Errores | Toda respuesta de error es JSON con `detail` y `codigo`. Reglas de negocio y registros protegidos: 409 con el motivo. Un error inesperado se registra en el log y devuelve un mensaje genérico, sin detalles técnicos. El frontend traduce cada código a un texto claro y distingue "no hay conexión" de "el servidor rechazó" | Mensajes que el operador entienda; la cola sin señal tiene que seguir guardando cuando no hay red |
+| Índices | Por fecha (y estado) en cobros, pagos, gastos, ventas, movimientos de inventario y auditoría | Los reportes y filtros por período recorren esas tablas |
+| Confirmaciones | Cerrar un lote de leche, quitar un destino o un precio y desactivar un usuario piden "¿Seguro?" en la misma pantalla. Anular pide motivo | Lo que no se deshace con un toque no se hace con un toque |
+| Mis ventas | Pantalla para el rol Ventas: lo que vendió y cobró en el período y lo que le falta cobrar. El Administrador ve ahí solo lo suyo | Ventas no tenía ningún reporte; los globales siguen siendo del Administrador |
+| Producción | `docker-compose.prod.yml` con Caddy (HTTPS automático) como única puerta; el primer Administrador se crea con `manage.py iniciar` sin datos de prueba | Instalar sin tocar código ni dejar usuarios de demo |
+| Respaldos | `deploy/respaldo.sh` (cron diario): base + comprobantes, verifica que el respaldo se pueda leer, borra los de más de 30 días y opcionalmente copia a Google Drive con rclone. `deploy/restaurar.sh` pide confirmación. Probado de punta a punta | El dueño tiene que poder recuperar todo si se rompe el servidor |
+
+## Deudas técnicas conocidas y funcionalidades futuras
+
+Lo que quedó fuera a propósito, o se puede mejorar. Ordenado de lo más útil a lo menos, según mi criterio.
+
+### Funcionalidades que podrían sumarse
+
+| Qué | Para qué | Notas |
+| --- | -------- | ----- |
+| Factura electrónica SIFEN (SET) | Emitir facturas válidas desde la venta | Requiere timbrado, certificado digital y el ambiente de pruebas de la SET. Hoy las ventas no emiten comprobante fiscal |
+| Avisos por WhatsApp o correo | Que las alertas (leche baja, rendimiento, deudas vencidas) y lo pendiente de aprobar lleguen sin abrir el sistema | Hoy las alertas solo se ven al entrar |
+| App instalable (PWA) y modo sin conexión completo | Abrir la app sin señal y cargar todo, no solo leche y ordeñe | Hoy la cola sin señal cubre leche y ordeñe por vaca, con la app abierta y la sesión iniciada. Gastos, queso y ventas necesitan señal |
+| App nativa (Android/iOS) y notificaciones push | Cámara, notificaciones y uso sin navegador | La web ya funciona en el celular; la PWA cubre buena parte de esto con menos costo |
+| Importar planillas | Cargar el historial de Excel del tambo | Quedó fuera del pedido de la Fase 6 |
+| Cierre de mes | Bloquear cambios en un mes ya revisado | Hoy un registro viejo se puede corregir (queda auditado y en la bandeja) |
+| Sanidad del rodeo | Vacunas, tratamientos y días de carencia (que no entre al tanque leche de una vaca tratada) | El rodeo hoy registra animales y ordeñe |
+| Varios establecimientos | Usar un mismo sistema para más de un tambo | El modelo tiene `establecimiento`, pero las pantallas y los reportes asumen uno solo |
+| Otras monedas | Compras en dólares o reales | Todo está en guaraníes |
+| Reportes con presupuesto | Comparar el gasto real contra lo esperado por temporada (Gs. 2 a 4 millones) | |
+
+### Deudas técnicas
+
+| Qué | Riesgo | Cómo se resuelve |
+| --- | ------ | ---------------- |
+| Copia del último hash de auditoría fuera del servidor | Alguien con control total del servidor podría rehacer la cadena entera sin que se note | Mandar cada noche el último hash por correo o a Drive junto con el respaldo |
+| El Caddyfile no se probó con Caddy en este entorno | Un error de sintaxis se vería recién al instalar | Correr `caddy validate` o la primera instalación con alguien al lado; el resto del compose se validó |
+| Sin integración continua (CI) | Las pruebas corren solo cuando alguien las lanza | Un workflow de GitHub Actions con las 300 pruebas y el build en cada PR |
+| Límite de intentos guardado en la memoria de cada proceso | Con varios procesos del backend, el límite por IP se multiplica | Guardarlo en Redis o en la base. El bloqueo por usuario no tiene este problema (usa la auditoría) |
+| `/salud` no revisa la base de datos | Puede decir "ok" con la base caída | Agregar una consulta simple a la base |
+| Modo de prueba sin Caddy | En `docker-compose.yml` (no producción) el celular puede inventar su IP | Solo afecta al modo de prueba |
+| Sin pruebas automáticas del frontend | Un cambio en pantallas se detecta solo con las pruebas de navegador hechas a mano | Sumar pruebas de componentes y los recorridos de navegador al CI |
+| *Mis ventas* del Administrador muestra solo sus propias ventas | Puede confundir | Agregar un filtro por vendedor para el Administrador |
