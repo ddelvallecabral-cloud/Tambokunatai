@@ -1,4 +1,4 @@
-import { api, ApiError } from "./api";
+import { api, respondioElServidor } from "./api";
 
 export type Ordene = "manana" | "tarde";
 export type TipoDestino = "venta" | "elaboracion_queso" | "descarte";
@@ -172,7 +172,7 @@ export async function registrarLote(datos: LoteNuevo): Promise<{ lote?: Lote; en
     const lote = await api<Lote>("/lotes-leche", { method: "POST", body: JSON.stringify(datos) });
     return { lote, enCola: false };
   } catch (error) {
-    if (error instanceof ApiError) throw error; // el servidor respondió: es un error real
+    if (respondioElServidor(error)) throw error; // el servidor respondió: es un error real
     guardarCola([...leerCola().filter((l) => l.id !== datos.id), datos]);
     return { enCola: true };
   }
@@ -193,7 +193,7 @@ export async function enviarCola(): Promise<{ enviados: number; errores: string[
         enviados++;
         guardarCola(leerCola().filter((l) => l.id !== datos.id));
       } catch (error) {
-        if (!(error instanceof ApiError)) break; // sigue sin señal
+        if (!respondioElServidor(error)) break; // sigue sin señal
         if (error.status === 401) break; // sesión vencida: se reintenta al volver a entrar
         const sesion = datos.ordene === "manana" ? "mañana" : "tarde";
         const mensaje = `${datos.litros} L del ${datos.fecha} (${sesion}) no se guardaron: ${error.message}`;

@@ -41,3 +41,13 @@ export function Tarjeta({ titulo, valor, detalle }: { titulo: string; valor: Rea
     </div>
   );
 }
+
+/** Estado vacío de un listado: qué significa que no haya nada y, si corresponde, qué hacer. */
+export function Vacio({ children, accion }: { children: React.ReactNode; accion?: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-8 text-center text-sm text-stone-500">
+      <p>{children}</p>
+      {accion && <div className="mt-3">{accion}</div>}
+    </div>
+  );
+}

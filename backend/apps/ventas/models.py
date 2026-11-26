@@ -102,6 +102,7 @@ class Venta(AuditableModel):
 
     class Meta:
         db_table = "ventas"
+        indexes = [models.Index(fields=["estado_venta", "fecha"], name="venta_estado_fecha_idx")]
         ordering = ["-fecha", "-numero"]
         constraints = [models.CheckConstraint(condition=Q(cantidad__gt=0), name="venta_cantidad_positiva")]
 
@@ -194,5 +195,6 @@ class Cobro(models.Model):
 
     class Meta:
         db_table = "cobros"
+        indexes = [models.Index(fields=["fecha"], name="cobro_fecha_idx")]
         ordering = ["-fecha", "-fecha_creacion"]
         constraints = [models.CheckConstraint(condition=Q(monto__gt=0), name="cobro_monto_positivo")]

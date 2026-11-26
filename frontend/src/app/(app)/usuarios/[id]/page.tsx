@@ -10,6 +10,7 @@ import { fechaHora } from "@/lib/formato";
 import { FormUsuario } from "@/components/FormUsuario";
 import { NOMBRE_MODULO, primerError, type Rol, type UsuarioAdmin } from "@/lib/usuarios";
 import { Aviso, botonSecundario, Insignia } from "@/components/ui";
+import { Confirmar } from "@/components/Confirmar";
 
 export default function DetalleUsuario() {
   const { id } = useParams<{ id: string }>();
@@ -72,7 +73,8 @@ export default function DetalleUsuario() {
                 <Pencil className="h-4 w-4" aria-hidden /> Editar o restablecer clave
               </button>
               {!esYo && (u.activo ? (
-                <button onClick={() => activar(false)} className="rounded-xl px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50">Desactivar</button>
+                <Confirmar pregunta={`¿Desactivar a ${u.nombre}? No va a poder entrar.`} si="Sí, desactivar" onConfirmar={() => activar(false)}
+                  className="rounded-xl px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50">Desactivar</Confirmar>
               ) : (
                 <button onClick={() => activar(true)} className="rounded-xl px-3 py-2 text-sm font-medium text-campo-700 hover:bg-campo-50">Reactivar</button>
               ))}

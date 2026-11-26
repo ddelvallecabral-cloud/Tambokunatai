@@ -1,4 +1,4 @@
-import { api, ApiError } from "./api";
+import { api, respondioElServidor } from "./api";
 import type { Lote, Ordene, TipoDestino } from "./leche";
 
 export type Situacion = "en_ordene" | "seca" | "en_recria" | "vendida" | "muerta";
@@ -76,7 +76,7 @@ export async function enviarPlanilla(p: EnvioPlanilla): Promise<{ respuesta?: Re
     const respuesta = await api<RespuestaPlanilla>("/rodeo/ordene", { method: "POST", body: cuerpo(p) });
     return { respuesta, enCola: false };
   } catch (error) {
-    if (error instanceof ApiError) throw error;
+    if (respondioElServidor(error)) throw error;
     escribir(CLAVE, [...planillasEnCola().filter((x) => x.clave !== p.clave), p]);
     return { enCola: true };
   }
@@ -92,7 +92,7 @@ export async function enviarColaRodeo() {
         await api("/rodeo/ordene", { method: "POST", body: cuerpo(p) });
         escribir(CLAVE, planillasEnCola().filter((x) => x.clave !== p.clave));
       } catch (error) {
-        if (!(error instanceof ApiError) || error.status === 401) break;
+        if (!respondioElServidor(error) || error.status === 401) break;
         const sesion = p.ordene === "manana" ? "mañana" : "tarde";
         escribir(CLAVE_RECHAZOS, [...rechazosRodeo(), `Ordeñe del ${p.fecha} (${sesion}): ${error.message}`]);
         escribir(CLAVE, planillasEnCola().filter((x) => x.clave !== p.clave));

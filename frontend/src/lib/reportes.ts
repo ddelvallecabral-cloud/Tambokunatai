@@ -87,3 +87,9 @@ export const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.t
 export function primerDiaMes(iso: string): string {
   return `${iso.slice(0, 7)}-01`;
 }
+
+export type MisVentas = {
+  desde: string; hasta: string; total: number; cantidad_ventas: number; cobrado: number; por_cobrar: number; vencido: number;
+  por_producto: { producto: "leche" | "queso"; nombre: string; unidad: string; ventas: number; cantidad: string; total: number }[];
+  ventas: { id: string; codigo: string; fecha: string; cliente: string; producto: string; cantidad: string; unidad: string; total: number; saldo: number }[];
+};

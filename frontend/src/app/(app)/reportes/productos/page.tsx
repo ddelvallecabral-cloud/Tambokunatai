@@ -46,6 +46,7 @@ function Productos() {
                 {r.costo_litro_por_mes.map((m) => (
                   <tr key={m.mes}><td className="py-2 capitalize">{nombreMes(m.mes)}</td><td className="py-2 text-right tabular-nums">{gs(m.gastos)}</td><td className="py-2 text-right tabular-nums">{litros(m.litros)}</td><td className="py-2 text-right font-medium tabular-nums">{gs(m.por_litro)}</td></tr>
                 ))}
+                {!r.costo_litro_por_mes.length && <tr><td colSpan={4} className="py-3 text-stone-500">No hubo ordeñe en el período.</td></tr>}
               </tbody>
             </table>
             <p className="mt-2 text-xs text-stone-500">Costo por litro = gastos aprobados del centro “Producción de leche” del mes ÷ litros ordeñados ese mes. Es la base para el costo de la leche vendida y de la usada en queso.</p>

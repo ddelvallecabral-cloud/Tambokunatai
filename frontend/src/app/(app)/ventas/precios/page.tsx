@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { fechaHora } from "@/lib/formato";
 import { gs, NOMBRE_TIPO_CLIENTE, PRODUCTOS, TIPOS_CLIENTE, type Precio, type Producto, type TipoCliente } from "@/lib/ventas";
 import { Aviso, botonPrimario, botonSecundario, estiloInput } from "@/components/ui";
+import { Confirmar } from "@/components/Confirmar";
 
 const n2 = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 2 });
 const primerError = (err: unknown) =>
@@ -52,6 +53,9 @@ export default function Precios() {
               {precios.filter((p) => p.producto === prod.valor).map((p) => (
                 <Fila key={p.id} p={p} unidad={prod.unidad} edita={edita} onGuardar={(c) => guardar(p, c)} />
               ))}
+              {!precios.some((p) => p.producto === prod.valor) && (
+                <tr><td colSpan={edita ? 4 : 3} className="py-3 text-stone-500">Sin precio cargado: hasta que lo cargues no se puede vender este producto.</td></tr>
+              )}
             </tbody>
           </table>
         </section>
@@ -83,7 +87,8 @@ function Fila({ p, unidad, edita, onGuardar }: { p: Precio; unidad: string; edit
           {cambiado ? (
             <button disabled={!Number(valor)} onClick={() => onGuardar({ precio_unitario: Number(valor) })} className="rounded-md bg-campo-700 px-2 py-1 text-xs font-medium text-white">Guardar</button>
           ) : (
-            <button onClick={() => onGuardar({ activo: false })} className="text-xs text-red-700 hover:underline" title={`Modificado ${fechaHora(p.fecha_modificacion)}`}>Quitar</button>
+            <Confirmar onConfirmar={() => onGuardar({ activo: false })} pregunta="¿Quitar este precio?" si="Sí, quitar"
+              className="text-xs text-red-700 hover:underline">Quitar</Confirmar>
           )}
         </td>
       )}

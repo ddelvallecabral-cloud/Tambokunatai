@@ -104,6 +104,7 @@ class MovimientoInventario(models.Model):
 
     class Meta:
         db_table = "movimientos_inventario"
+        indexes = [models.Index(fields=["insumo", "fecha"], name="mov_insumo_fecha_idx"), models.Index(fields=["item", "fecha"], name="mov_item_fecha_idx")]
         ordering = ["-fecha"]
         constraints = [
             models.CheckConstraint(condition=Q(cantidad__gt=0), name="movimiento_cantidad_positiva"),

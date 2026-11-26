@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { cantidad, fechaHora } from "@/lib/formato";
 import { NOMBRE_MOTIVO, NOMBRE_TIPO, type Movimiento } from "@/lib/inventario";
-import { estiloInput } from "@/components/ui";
+import { estiloInput, Vacio } from "@/components/ui";
 
 export default function Movimientos() {
   const [item, setItem] = useState("");
@@ -29,7 +29,9 @@ export default function Movimientos() {
         </div>
         <p className="text-xs text-stone-500">Los movimientos no se editan ni se borran: un error se corrige con un movimiento contrario.</p>
       </div>
-      {!movs ? <p className="text-stone-500">Cargando…</p> : (
+      {!movs ? <p className="text-stone-500">Cargando…</p> : movs.results.length === 0 ? (
+        <Vacio>No hay movimientos con ese filtro. Aparecen solos al registrar ordeñes, elaboraciones, compras y ventas.</Vacio>
+      ) : (
         <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-200 bg-white text-sm">
           {movs.results.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">

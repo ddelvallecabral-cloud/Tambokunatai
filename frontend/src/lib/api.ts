@@ -22,6 +22,42 @@ export class ApiError extends Error {
   }
 }
 
+/** true si el servidor respondió (error real); false si no hubo conexión (status 0). */
+export const respondioElServidor = (e: unknown): e is ApiError => e instanceof ApiError && e.status !== 0;
+
+const SIN_CONEXION = "No hay conexión con el sistema. Revisá la señal o el wifi y probá de nuevo.";
+
+/** Arma un mensaje que el usuario entiende a partir de la respuesta de error del servidor. */
+export function mensajeDeError(status: number, datos: unknown): string {
+  const d = (datos ?? {}) as Record<string, unknown>;
+  if (typeof d.detail === "string" && d.detail) return d.detail;
+  if (status === 400) {
+    // Errores por campo: {"monto": ["Debe ser mayor a 0."]} → "Monto: Debe ser mayor a 0."
+    for (const [campo, valor] of Object.entries(d)) {
+      const msj = Array.isArray(valor) ? valor[0] : typeof valor === "string" ? valor : null;
+      if (typeof msj === "string") {
+        const nombre = campo === "non_field_errors" ? "" : `${campo[0].toUpperCase()}${campo.slice(1).replace(/_/g, " ")}: `;
+        return `Revisá los datos. ${nombre}${msj}`;
+      }
+    }
+    return "Revisá los datos cargados.";
+  }
+  if (status === 403) return "Tu rol no tiene permiso para hacer esto.";
+  if (status === 404) return "No se encontró el registro. Puede que lo hayan anulado o que el enlace esté mal.";
+  if (status === 413) return "El archivo es demasiado grande. Probá con una foto más chica.";
+  if (status === 429) return "Demasiados intentos seguidos. Esperá un momento y probá de nuevo.";
+  if (status >= 500) return "El sistema tuvo un problema. Probá de nuevo en un rato; si sigue, avisale al administrador.";
+  return "No se pudo completar la acción.";
+}
+
+async function pedir(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new ApiError(0, SIN_CONEXION);
+  }
+}
+
 let accessToken: string | null = null;
 let refrescando: Promise<boolean> | null = null;
 
@@ -54,14 +90,14 @@ export async function api<T = unknown>(ruta: string, opciones: RequestInit = {},
   if (opciones.body && !(opciones.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
 
-  const r = await fetch(`/api/v1${ruta}`, { ...opciones, headers, credentials: "same-origin" });
+  const r = await pedir(`/api/v1${ruta}`, { ...opciones, headers, credentials: "same-origin" });
 
   if (r.status === 401 && reintentar && !ruta.startsWith("/auth/login")) {
     if (await refrescarSesion()) return api<T>(ruta, opciones, false);
   }
   if (!r.ok) {
     const datos = await r.json().catch(() => ({}));
-    throw new ApiError(r.status, (datos as { detail?: string }).detail ?? "Error inesperado", datos);
+    throw new ApiError(r.status, mensajeDeError(r.status, datos), datos);
   }
   return (r.status === 204 ? undefined : await r.json()) as T;
 }
@@ -70,7 +106,7 @@ export async function api<T = unknown>(ruta: string, opciones: RequestInit = {},
 export async function archivoProtegido(ruta: string, reintentar = true): Promise<string> {
   const headers = new Headers();
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-  const r = await fetch(`/api/v1${ruta}`, { headers, credentials: "same-origin" });
+  const r = await pedir(`/api/v1${ruta}`, { headers, credentials: "same-origin" });
   if (r.status === 401 && reintentar && (await refrescarSesion())) return archivoProtegido(ruta, false);
   if (!r.ok) throw new ApiError(r.status, "No se pudo abrir el comprobante.");
   return URL.createObjectURL(await r.blob());
@@ -80,7 +116,7 @@ export async function archivoProtegido(ruta: string, reintentar = true): Promise
 export async function descargar(ruta: string, reintentar = true): Promise<void> {
   const headers = new Headers();
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-  const r = await fetch(`/api/v1${ruta}`, { headers, credentials: "same-origin" });
+  const r = await pedir(`/api/v1${ruta}`, { headers, credentials: "same-origin" });
   if (r.status === 401 && reintentar && (await refrescarSesion())) return descargar(ruta, false);
   if (!r.ok) throw new ApiError(r.status, r.status === 403 ? "No tenés permiso para este reporte." : "No se pudo generar el archivo.");
   const nombre = /filename="([^"]+)"/.exec(r.headers.get("Content-Disposition") ?? "")?.[1] ?? "reporte";

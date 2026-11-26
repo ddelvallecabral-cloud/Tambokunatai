@@ -46,6 +46,7 @@ class Gasto(AuditableModel):
 
     class Meta:
         db_table = "gastos"
+        indexes = [models.Index(fields=["estado", "fecha"], name="gasto_estado_fecha_idx")]
         ordering = ["-fecha", "-fecha_creacion"]
 
     def _valores(self) -> dict:
