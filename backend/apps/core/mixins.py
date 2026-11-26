@@ -38,7 +38,9 @@ TRANSICIONES = {
     "enviar": ({EstadoRegistro.BORRADOR, EstadoRegistro.RECHAZADO}, EstadoRegistro.PENDIENTE),
     "aprobar": ({EstadoRegistro.PENDIENTE}, EstadoRegistro.APROBADO),
     "rechazar": ({EstadoRegistro.PENDIENTE}, EstadoRegistro.RECHAZADO),
-    "cerrar": ({EstadoRegistro.APROBADO}, EstadoRegistro.CERRADO),
+    # Cerrar desde borrador sirve a entidades sin aprobación previa (p. ej. lotes de leche);
+    # las entidades que exigen aprobación lo controlan en su servicio.
+    "cerrar": ({EstadoRegistro.BORRADOR, EstadoRegistro.APROBADO}, EstadoRegistro.CERRADO),
     "reabrir": ({EstadoRegistro.APROBADO, EstadoRegistro.CERRADO, EstadoRegistro.RECHAZADO}, EstadoRegistro.BORRADOR),
     "anular": (
         {EstadoRegistro.BORRADOR, EstadoRegistro.PENDIENTE, EstadoRegistro.APROBADO,
@@ -49,6 +51,11 @@ TRANSICIONES = {
 
 # Campos que maneja el mixin y no se listan como "cambios" de una edición.
 CAMPOS_CONTROL = {"fecha_creacion", "fecha_modificacion", "modificado_por_id", "version"}
+
+
+# Ediciones especiales que el servicio autoriza explícitamente (p. ej. el Administrador
+# corrigiendo un registro cerrado). Se auditan con su propio nombre y motivo.
+ACCIONES_DE_EDICION = {"editar_bloqueado", "aplicar_correccion"}
 
 
 class RegistroBloqueado(Exception):
@@ -120,7 +127,7 @@ class AuditableModel(models.Model):
 
             if es_alta:
                 auditoria.registrar("crear", self.nombre_entidad(), self.pk, cambios=self._valores())
-            elif accion is None:
+            elif accion is None or accion in ACCIONES_DE_EDICION:
                 antes, despues = anterior._valores(), self._valores()
                 cambios = {
                     k: [antes[k], despues[k]]
@@ -128,7 +135,10 @@ class AuditableModel(models.Model):
                     if k not in CAMPOS_CONTROL and antes.get(k) != despues[k]
                 }
                 if cambios:
-                    auditoria.registrar("editar", self.nombre_entidad(), self.pk, cambios=cambios)
+                    auditoria.registrar(
+                        accion or "editar", self.nombre_entidad(), self.pk,
+                        cambios=cambios, motivo=getattr(self, "_motivo_en_curso", "") or "",
+                    )
 
     # --- transiciones de estado ------------------------------------------
     def _transicion(self, accion: str, motivo: str = "", snapshot: bool = False):
@@ -161,6 +171,16 @@ class AuditableModel(models.Model):
         finally:
             self._accion_en_curso = None
         return self
+
+    def guardar_edicion_autorizada(self, accion: str, motivo: str = ""):
+        """Guarda cambios saltando el bloqueo por estado. Solo la llama un servicio que ya verificó
+        el permiso (p. ej. Administrador editando un registro cerrado). Queda auditado con motivo."""
+        assert accion in ACCIONES_DE_EDICION, accion
+        self._accion_en_curso, self._motivo_en_curso = accion, motivo
+        try:
+            self.save()
+        finally:
+            self._accion_en_curso, self._motivo_en_curso = None, ""
 
     def enviar(self):
         return self._transicion("enviar")

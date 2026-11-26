@@ -27,6 +27,7 @@ PERMISOS = [
     ("leche.ver", "leche", "Ver lotes de leche"),
     ("leche.lote.gestionar", "leche", "Crear lotes y asignar destinos"),
     ("leche.lote.cerrar", "leche", "Cerrar lotes de leche"),
+    ("leche.lote.aprobar", "leche", "Aprobar correcciones, editar lotes cerrados y anular"),
     # Queso
     ("queso.ver", "queso", "Ver lotes de queso"),
     ("queso.lote.gestionar", "queso", "Crear y editar lotes de queso en borrador"),
@@ -99,8 +100,8 @@ ROLES = {
 # si ya está construido (los que no, se muestran en gris).
 MODULOS = [
     {"codigo": "inicio", "nombre": "Inicio", "ruta": "/", "permiso": None, "disponible": True, "fase": 1},
-    {"codigo": "rodeo", "nombre": "Rodeo y ordeñe", "ruta": "/rodeo", "permiso": "rodeo.ver", "disponible": False, "fase": 2},
-    {"codigo": "leche", "nombre": "Leche", "ruta": "/leche", "permiso": "leche.ver", "disponible": False, "fase": 2},
+    {"codigo": "rodeo", "nombre": "Rodeo y ordeñe por vaca", "ruta": "/rodeo", "permiso": "rodeo.ver", "disponible": False, "fase": 3},
+    {"codigo": "leche", "nombre": "Leche", "ruta": "/leche", "permiso": "leche.ver", "disponible": True, "fase": 2},
     {"codigo": "queso", "nombre": "Queso", "ruta": "/queso", "permiso": "queso.ver", "disponible": False, "fase": 3},
     {"codigo": "inventario", "nombre": "Inventario", "ruta": "/inventario", "permiso": "inventario.ver", "disponible": False, "fase": 3},
     {"codigo": "compras", "nombre": "Compras", "ruta": "/compras", "permiso": "compras.ver", "disponible": False, "fase": 3},
@@ -109,7 +110,7 @@ MODULOS = [
     {"codigo": "aprobaciones", "nombre": "Aprobaciones", "ruta": "/aprobaciones", "permiso": "gastos.gasto.aprobar", "disponible": False, "fase": 5},
     {"codigo": "reportes", "nombre": "Reportes", "ruta": "/reportes", "permiso": "reportes.ver", "disponible": False, "fase": 6},
     {"codigo": "auditoria", "nombre": "Auditoría", "ruta": "/auditoria", "permiso": "auditoria.ver", "disponible": False, "fase": 6},
-    {"codigo": "usuarios", "nombre": "Usuarios y roles", "ruta": "/usuarios", "permiso": "usuarios.ver", "disponible": False, "fase": 2},
+    {"codigo": "usuarios", "nombre": "Usuarios y roles", "ruta": "/usuarios", "permiso": "usuarios.ver", "disponible": False, "fase": 3},
 ]
 
 
