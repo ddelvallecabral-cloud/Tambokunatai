@@ -1,0 +1,42 @@
+# Diseño técnico
+
+El diseño completo aprobado en la Fase 0 (stack, modelo de datos de 37 tablas, mapa de endpoints,
+flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el documento
+**Diseño técnico ERP Tambo Kuñatai**: <https://claude.ai/artifact/YBPMTiUCoE6Mbyys1uucDM>
+
+## Decisiones confirmadas por el dueño (26/11/2026)
+
+- **Gastos:** el gasto mensual varía con la temporada, aprox. Gs. 2.000.000 (baja) a Gs. 4.000.000 (alta).
+  El umbral de aprobación es configurable, no fijo en el código. Cargado como parámetro en `configuracion`.
+- **Ordeñe:** se registra por vaca y por sesión (mañana / tarde) para seguir si la producción se
+  mantiene, baja o sube.
+- **Clientes:** principalmente particulares, no acopiadores.
+- **Modo sin conexión:** necesario; la señal en el campo falla.
+- **Ventas de queso:** al contado por ahora; a crédito más adelante.
+
+## Plan de fases
+
+1. Setup, base de datos, autenticación, usuarios, roles, permisos y auditoría base. ← **hecho**
+2. Rodeo, ordeñe por vaca y sesión, lotes de leche (con modo sin conexión) y pantalla de usuarios.
+3. Inventario, insumos, compras y lotes de queso con aprobación.
+4. Clientes, ventas, entregas, cuentas por cobrar y cobros.
+5. Gastos, bandeja de aprobaciones, cierre de mes.
+6. Reportes, tablero del dueño, pantalla de auditoría e importación de planillas.
+7. Integración SIFEN (opcional).
+
+## Decisiones técnicas de la Fase 1
+
+| Tema | Decisión | Por qué |
+| --- | --- | --- |
+| Framework | Django 5.2 LTS + DRF (no FastAPI) | Migraciones, permisos y panel de respaldo incluidos; soporte hasta 2028 |
+| Migraciones | Las de Django (equivalente a Alembic) | Vienen integradas con el ORM |
+| Contraseñas | Argon2 + validadores (mín. 8, no comunes, no solo números) | Recomendación actual de OWASP |
+| Sesión | JWT de acceso de 15 min en memoria + refresh de 7 días en cookie httpOnly, rotado en cada uso y con lista negra | El JavaScript no puede robar el refresh; un refresh usado o cerrado no sirve más |
+| Login | Limitado a 30 intentos por minuto por IP | Freno a ataques de fuerza bruta. Hasta poner un proxy HTTPS (Caddy) delante en el despliegue, el backend ve la IP del contenedor del frontend: el límite es compartido y la auditoría registra esa IP en lugar de la del celular |
+| Registro | Solo el Administrador crea usuarios (`POST /usuarios`), no hay registro público | Es un sistema interno |
+| Permisos | Granulares (`modulo.entidad.accion`); roles = paquetes de permisos definidos en `catalogo.py` | Se puede crear un rol nuevo sin tocar código de las vistas |
+| Menú | El backend devuelve los módulos visibles para cada usuario | El frontend no decide permisos; un ítem no permitido nunca llega |
+| Auditoría | Tabla de solo inserción con cadena de hashes SHA-256; triggers de PostgreSQL bloquean UPDATE, DELETE y TRUNCATE | Nadie puede alterarla desde el sistema; una edición puntual hecha directo en la base se detecta con `/auditoria/verificar`. (Alguien con control total del servidor podría recalcular toda la cadena: para eso, en una fase posterior, se guarda una copia diaria del último hash fuera del servidor) |
+| Usuario en la auditoría | Contexto por petición (ContextVar) completado por el middleware y la autenticación JWT | Los modelos saben quién actúa sin pasar el usuario a mano |
+| Frontend → backend | Next.js reenvía `/api/*` al backend | Mismo origen: la cookie funciona sin CORS |
+| Nombres de columnas | Los del pedido de Fase 1 (`fecha_creacion`, `modificado_por`…) | Prevalecen sobre los nombres del documento de diseño (`creado_en`, `actualizado_por`) |

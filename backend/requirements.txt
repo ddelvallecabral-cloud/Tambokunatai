@@ -1,0 +1,7 @@
+Django[argon2]==5.2.19
+djangorestframework==3.17.2
+djangorestframework-simplejwt==5.5.1
+psycopg[binary]==3.3.9
+django-environ==0.14.0
+gunicorn==27.0.1
+whitenoise==6.9.0

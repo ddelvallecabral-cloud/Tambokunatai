@@ -1,0 +1,9 @@
+{
+  "name": "ERP Tambo Kuñatai",
+  "short_name": "Tambo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#2f5a29",
+  "lang": "es"
+}
