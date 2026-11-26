@@ -1,19 +1,23 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LogOut, Menu, Milk, X } from "lucide-react";
+import { KeyRound, LogOut, Menu, Milk, X } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/lib/auth";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { usuario, cargando, salir } = useAuth();
   const router = useRouter();
+  const ruta = usePathname();
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   useEffect(() => {
     if (!cargando && !usuario) router.replace("/login");
-  }, [cargando, usuario, router]);
+    // Con una clave puesta por el Administrador, primero hay que cambiarla.
+    else if (usuario?.debe_cambiar_clave && ruta !== "/cuenta") router.replace("/cuenta");
+  }, [cargando, usuario, router, ruta]);
 
   if (cargando || !usuario) {
     return <div className="flex min-h-screen items-center justify-center text-stone-500">Cargando…</div>;
@@ -67,6 +71,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <p className="truncate text-sm font-medium" data-testid="usuario-nombre">{usuario.nombre}</p>
             <p className="truncate text-xs text-stone-500" data-testid="usuario-rol">{rol}</p>
           </div>
+          <Link
+            href="/cuenta"
+            onClick={() => setMenuAbierto(false)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-stone-700 hover:bg-stone-100"
+          >
+            <KeyRound className="h-4 w-4" aria-hidden />
+            Mi cuenta y clave
+          </Link>
           <button
             onClick={cerrarSesion}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-stone-700 hover:bg-stone-100"

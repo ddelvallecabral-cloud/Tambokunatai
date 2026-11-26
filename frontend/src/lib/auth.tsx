@@ -9,6 +9,7 @@ type EstadoAuth = {
   ingresar: (usuario: string, clave: string) => Promise<void>;
   salir: () => Promise<void>;
   puede: (permiso: string) => boolean;
+  recargar: () => Promise<void>;
 };
 
 const AuthContext = createContext<EstadoAuth | null>(null);
@@ -43,9 +44,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsuario(null);
   }, []);
 
+  const recargar = useCallback(async () => {
+    setUsuario(await api<Perfil>("/auth/me"));
+  }, []);
+
   const puede = useCallback((permiso: string) => !!usuario?.permisos.includes(permiso), [usuario]);
 
-  return <AuthContext.Provider value={{ usuario, cargando, ingresar, salir, puede }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ usuario, cargando, ingresar, salir, puede, recargar }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

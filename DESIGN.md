@@ -20,8 +20,8 @@ flujos, roles y permisos, auditoría, trazabilidad y plan de fases) está en el 
 2. Producción de leche: lotes por sesión de ordeñe, destinos con saldo, correcciones con aprobación,
    panel con alertas y carga sin conexión. ← **hecho**
 3. Rodeo y ordeñe por vaca; inventario e insumos; lotes de queso con aprobación y trazabilidad. ← **hecho**
-   (La pantalla de usuarios pasa a la Fase 4 y las compras formales a la Fase 5.)
-4. Clientes, ventas, entregas, cuentas por cobrar y cobros. ← **hecho**
+   (Las compras formales pasan a la Fase 5.)
+4. Clientes, ventas, entregas, cuentas por cobrar y cobros; pantalla de usuarios y roles. ← **hecho**
 5. Gastos, bandeja de aprobaciones, cierre de mes.
 6. Reportes, tablero del dueño, pantalla de auditoría e importación de planillas.
 7. Integración SIFEN (opcional).

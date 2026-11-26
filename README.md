@@ -127,13 +127,26 @@ leche Gs. 3.500/L, 3.200 desde 100 L).
 7. **Precios.** Todos ven la tabla; solo el `admin` la cambia o vende con un precio distinto al de lista.
 8. **Anular.** Solo el `admin`, con motivo y sin cobros vigentes: el stock vuelve a su lote.
 
+## Usuarios y roles
+
+Como `admin`, **Usuarios y roles**:
+
+1. **Usuario nuevo**: nombre, usuario para entrar, teléfono, rol (Administrador, Operador o Ventas) y una
+   clave provisoria. La primera vez que esa persona entra, el sistema la lleva a **Mi cuenta** para que
+   elija una clave propia.
+2. En la ficha de un usuario: **Editar o restablecer clave** (la nueva vuelve a ser provisoria) y
+   **Desactivar** (ya no puede entrar; no se borra, así su historial queda en la auditoría). El
+   Administrador no puede desactivarse ni quitarse el rol a sí mismo, y siempre queda al menos uno activo.
+3. **Roles y permisos** muestra qué puede hacer cada rol, módulo por módulo.
+4. Cualquier usuario cambia su clave desde **Mi cuenta y clave**, abajo en el menú.
+
 ## Pruebas
 
 ```bash
 docker compose exec backend python -m pytest
 ```
 
-152 pruebas: login, sesión y refresh, usuarios, permisos y menú por rol, auditoría (mixin, logins,
+156 pruebas: login, sesión y refresh, usuarios, permisos y menú por rol, auditoría (mixin, logins,
 inmutabilidad), las reglas de la leche (saldo, destinos, correcciones con aprobación, tablero y
 alertas), el ordeñe por vaca (suma al lote, reenvío, correcciones, tendencia) y el queso (descuento de
 leche e insumos, reservas, consumo real, rendimiento, aprobación solo del Administrador, rechazo y
